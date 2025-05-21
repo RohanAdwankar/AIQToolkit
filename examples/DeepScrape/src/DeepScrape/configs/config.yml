@@ -14,23 +14,6 @@ llms:
     max_tokens: 250
 
 functions:
-  calculator_multiply:
-    _type: calculator_multiply
-  calculator_inequality:
-    _type: calculator_inequality
-  calculator_divide:
-    _type: aiq_simple_calculator/calculator_divide
-  math_agent:
-    _type: tool_calling_agent
-    tool_names:
-      - calculator_multiply
-      - calculator_inequality
-      - calculator_divide
-    llm_name: agent_executor
-    verbose: true
-    handle_tool_errors: true
-    description: 'Useful for performing simple mathematical calculations.'
-
   wikipedia_search:
     _type: wiki_search
     max_results: 3
