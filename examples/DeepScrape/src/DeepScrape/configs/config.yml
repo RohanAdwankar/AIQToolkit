@@ -1,0 +1,98 @@
+general:
+  use_uvloop: true
+
+llms:
+  agent_orchestrator:
+    _type: nim
+    model_name: meta/llama-3.1-405b-instruct
+    temperature: 0.2
+    max_tokens: 250
+  agent_executor:
+    _type: nim
+    model_name: meta/llama-3.3-70b-instruct
+    temperature: 0.0
+    max_tokens: 250
+
+functions:
+  calculator_multiply:
+    _type: calculator_multiply
+  calculator_inequality:
+    _type: calculator_inequality
+  calculator_divide:
+    _type: aiq_simple_calculator/calculator_divide
+  math_agent:
+    _type: tool_calling_agent
+    tool_names:
+      - calculator_multiply
+      - calculator_inequality
+      - calculator_divide
+    llm_name: agent_executor
+    verbose: true
+    handle_tool_errors: true
+    description: 'Useful for performing simple mathematical calculations.'
+
+  wikipedia_search:
+    _type: wiki_search
+    max_results: 3
+  current_datetime:
+    _type: current_datetime
+  internet_agent:
+    _type: tool_calling_agent
+    tool_names:
+      - wikipedia_search
+      - current_datetime
+    llm_name: agent_executor
+    verbose: true
+    handle_tool_errors: true
+    description: "Useful for performing simple internet searches."
+
+  code_generation:
+    _type: code_generation
+    programming_language: "Python"
+    description: "Useful to generate Python code. For any questions about code generation, you must only use this tool!"
+    llm_name: agent_orchestrator
+    verbose: true
+
+  intent_agent:
+    _type: tool_calling_agent
+    tool_names:
+      - scripter_agent
+    llm_name: agent_orchestrator
+    verbose: true
+    handle_tool_errors: true
+    description: "Analyzes user intent, plans table structure, and delegates attribute/row extraction to scripter_agent."
+
+  scripter_agent:
+    _type: tool_calling_agent
+    tool_names:
+      - presentation_agent
+    llm_name: agent_executor
+    verbose: true
+    handle_tool_errors: true
+    description: "Given a plan from intent_agent, generates code or queries to fetch each attribute/row, then passes results to presentation_agent."
+
+  presentation_agent:
+    _type: presentation_agent
+    description: "Formats the collected data into a table or report once all cells are filled."
+
+workflow:
+  _type: react_agent
+  tool_names: [intent_agent]
+  llm_name: agent_orchestrator
+  verbose: true
+  handle_parsing_errors: true
+  max_retries: 2
+  system_prompt: |
+    You are a multi-agent system for structured data extraction and presentation. The intent agent should analyze the user's request, determine if a table is needed, and plan the attributes and rows. The scripter agent should fetch the required data for each cell. The presentation agent should only finalize when all required data is collected and present the results in a clear table. Always ensure completeness and consistency before finishing.
+    {tools}
+    Use the following format for agent communication:
+    Question: the input question you must answer
+    Thought: you should always think about what to do
+    Action: the action to take, should be one of [{tool_names}]
+    Action Input: the input to the action (if there is no required input, include "Action Input: None")
+    Observation: wait for the expert to respond, do not assume the expert's response
+    ... (this Thought/Action/Action Input/Observation can repeat N times.)
+    Use the following format once you have the final answer:
+    Thought: I now know the final answer
+    Final Answer: the final answer to the original input question
+
