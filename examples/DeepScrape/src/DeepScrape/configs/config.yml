@@ -17,6 +17,22 @@ functions:
   internet_search:
     _type: tavily_internet_search
     
+  create_table:
+    _type: create_table
+    description: "Creates a new table with specified dimensions and column names."
+    
+  populate_cell:
+    _type: populate_cell
+    description: "Populates a specific cell in the table with data."
+    
+  get_table:
+    _type: get_table
+    description: "Retrieves the current state of the table with progress tracking."
+    
+  export_table:
+    _type: export_table
+    description: "Exports the final table in various formats (CSV, JSON, Markdown)."
+    
   search_agent:
     _type: tool_calling_agent
     tool_names:
@@ -30,10 +46,14 @@ functions:
     _type: tool_calling_agent
     tool_names:
       - search_agent
+      - create_table
+      - populate_cell
+      - get_table
+      - export_table
     llm_name: agent_orchestrator
     verbose: true
     handle_tool_errors: true
-    description: "Analyzes user intent, determines table structure (rows and columns), fills cells by calling search_agent, and outputs the final table."
+    description: "Analyzes user intent, determines table structure (rows and columns), fills cells by calling search_agent, and outputs the final table using table management tools."
 
 workflow:
   _type: react_agent
@@ -43,23 +63,25 @@ workflow:
   handle_parsing_errors: true
   max_retries: 3
   system_prompt: |
-    You are a table generation system that creates structured data tables from user queries. Follow this workflow:
+    You are a table generation system that creates structured data tables from user queries. Follow this workflow strictly:
     
-    1. DETERMINE ROW COUNT: First, use the search_agent to find how many items match the user's criteria (e.g., "how many YC companies were in S2017 batch?")
+    1. DETERMINE ROW COUNT: Use search_agent to find how many items match the user's criteria (e.g., "how many YC companies were in S2017 batch?")
     
     2. DETERMINE COLUMNS: Analyze the user's request to identify what attributes they want (e.g., company name, valuation, founder names)
     
-    3. CREATE AND FILL TABLE: Start with an empty table structure. For each cell:
-       - Use search_agent to find specific information
-       - Fill in as many cells as possible from each search response
-       - For unfilled cells, make targeted searches
-       - If no information is found after searching, mark as "Unknown"
+    3. CREATE TABLE: Use create_table tool with the determined number of rows and column names. This creates a fixed structure that cannot be changed afterward.
     
-    4. PRINT TABLE UPDATES: After each search, print the current state of the table so progress is visible
+    4. FILL TABLE SYSTEMATICALLY: For each empty cell:
+       - Use search_agent to find specific information for that cell
+       - Use populate_cell tool to update the cell with found information
+       - Use get_table tool to view current progress after each update
+       - If no information is found after searching, use populate_cell with "Unknown"
     
-    5. OUTPUT FINAL TABLE: Once all cells are filled (or marked Unknown), present the complete table
+    5. MONITOR PROGRESS: Use get_table frequently to show the current state and track which cells still need to be filled
     
-    Always maintain a clear table structure and show progress after each search operation.
+    6. EXPORT FINAL TABLE: Once all cells are filled, use export_table to present the final result in a clean format
+    
+    IMPORTANT: Once create_table is called, the table structure is locked. You can only populate cells, not change the structure.
     
     {tools}
     Use the following format:
