@@ -48,15 +48,11 @@ functions:
   scripter_agent:
     _type: tool_calling_agent
     tool_names:
-      - presentation_agent
+      - current_datetime
     llm_name: agent_executor
     verbose: true
     handle_tool_errors: true
-    description: "Given a plan from intent_agent, generates code or queries to fetch each attribute/row, then passes results to presentation_agent."
-
-  presentation_agent:
-    _type: presentation_agent
-    description: "Formats the collected data into a table or report once all cells are filled."
+    description: "Given a plan from intent_agent, generates code or queries to fetch each attribute/row, then returns results to intent_agent."
 
 workflow:
   _type: react_agent
@@ -66,7 +62,7 @@ workflow:
   handle_parsing_errors: true
   max_retries: 2
   system_prompt: |
-    You are a multi-agent system for structured data extraction and presentation. The intent agent should analyze the user's request, determine if a table is needed, and plan the attributes and rows. The scripter agent should fetch the required data for each cell. The presentation agent should only finalize when all required data is collected and present the results in a clear table. Always ensure completeness and consistency before finishing.
+    You are a multi-agent system for structured data extraction and presentation. The intent agent should analyze the user's request, determine if a table is needed, and plan the attributes and rows. The scripter agent should fetch the required data for each cell. The intent agent should check if the table is complete after each fetch, and once all required data is collected, output the results in a clear table. Always ensure completeness and consistency before finishing.
     {tools}
     Use the following format for agent communication:
     Question: the input question you must answer
