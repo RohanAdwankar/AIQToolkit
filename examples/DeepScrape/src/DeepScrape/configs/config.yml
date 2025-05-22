@@ -6,53 +6,34 @@ llms:
     _type: nim
     model_name: meta/llama-3.1-405b-instruct
     temperature: 0.2
-    max_tokens: 250
-  agent_executor:
+    max_tokens: 500
+  search_llm:
     _type: nim
     model_name: meta/llama-3.3-70b-instruct
     temperature: 0.0
-    max_tokens: 250
+    max_tokens: 500
 
 functions:
-  wikipedia_search:
-    _type: wiki_search
-    max_results: 3
-  current_datetime:
-    _type: current_datetime
-  internet_agent:
+  internet_search:
+    _type: tavily_internet_search
+    
+  search_agent:
     _type: tool_calling_agent
     tool_names:
-      - wikipedia_search
-      - current_datetime
-    llm_name: agent_executor
+      - internet_search
+    llm_name: search_llm
     verbose: true
     handle_tool_errors: true
-    description: "Useful for performing simple internet searches."
-
-  code_generation:
-    _type: code_generation
-    programming_language: "Python"
-    description: "Useful to generate Python code. For any questions about code generation, you must only use this tool!"
-    llm_name: agent_orchestrator
-    verbose: true
+    description: "Performs internet searches to gather information for table construction."
 
   intent_agent:
     _type: tool_calling_agent
     tool_names:
-      - scripter_agent
+      - search_agent
     llm_name: agent_orchestrator
     verbose: true
     handle_tool_errors: true
-    description: "Analyzes user intent, plans table structure, and delegates attribute/row extraction to scripter_agent."
-
-  scripter_agent:
-    _type: tool_calling_agent
-    tool_names:
-      - current_datetime
-    llm_name: agent_executor
-    verbose: true
-    handle_tool_errors: true
-    description: "Given a plan from intent_agent, generates code or queries to fetch each attribute/row, then returns results to intent_agent."
+    description: "Analyzes user intent, determines table structure (rows and columns), fills cells by calling search_agent, and outputs the final table."
 
 workflow:
   _type: react_agent
@@ -60,16 +41,33 @@ workflow:
   llm_name: agent_orchestrator
   verbose: true
   handle_parsing_errors: true
-  max_retries: 2
+  max_retries: 3
   system_prompt: |
-    You are a multi-agent system for structured data extraction and presentation. The intent agent should analyze the user's request, determine if a table is needed, and plan the attributes and rows. The scripter agent should fetch the required data for each cell. The intent agent should check if the table is complete after each fetch, and once all required data is collected, output the results in a clear table. Always ensure completeness and consistency before finishing.
+    You are a table generation system that creates structured data tables from user queries. Follow this workflow:
+    
+    1. DETERMINE ROW COUNT: First, use the search_agent to find how many items match the user's criteria (e.g., "how many YC companies were in S2017 batch?")
+    
+    2. DETERMINE COLUMNS: Analyze the user's request to identify what attributes they want (e.g., company name, valuation, founder names)
+    
+    3. CREATE AND FILL TABLE: Start with an empty table structure. For each cell:
+       - Use search_agent to find specific information
+       - Fill in as many cells as possible from each search response
+       - For unfilled cells, make targeted searches
+       - If no information is found after searching, mark as "Unknown"
+    
+    4. PRINT TABLE UPDATES: After each search, print the current state of the table so progress is visible
+    
+    5. OUTPUT FINAL TABLE: Once all cells are filled (or marked Unknown), present the complete table
+    
+    Always maintain a clear table structure and show progress after each search operation.
+    
     {tools}
-    Use the following format for agent communication:
+    Use the following format:
     Question: the input question you must answer
     Thought: you should always think about what to do
     Action: the action to take, should be one of [{tool_names}]
-    Action Input: the input to the action (if there is no required input, include "Action Input: None")
-    Observation: wait for the expert to respond, do not assume the expert's response
+    Action Input: the input to the action
+    Observation: wait for the response, do not assume it
     ... (this Thought/Action/Action Input/Observation can repeat N times.)
     Use the following format once you have the final answer:
     Thought: I now know the final answer
