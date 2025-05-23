@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BarChart as ReBarChart, Bar, Rectangle, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart as ReLineChart, Line,
@@ -212,6 +212,9 @@ export default function Home() {
   const [userInput, setUserInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
+  const [thoughts, setThoughts] = useState<string[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const thoughtsEndRef = useRef<HTMLDivElement>(null);
 
   // Poll the backend API for table updates every 2 seconds
   useEffect(() => {
@@ -261,6 +264,8 @@ export default function Home() {
     if (!userInput.trim()) return;
     setIsSubmitting(true);
     setSubmissionResult(null);
+    setIsStreaming(true);
+    setThoughts([]);
     try {
       const resp = await fetch("/api/ask", {
         method: "POST",
@@ -268,19 +273,29 @@ export default function Home() {
         body: JSON.stringify({ input_message: userInput }),
       });
       const data = await resp.json();
-      if (data.value) {
-        setSubmissionResult(data.value);
+      // DEBUG: Show the raw output in the sidebar for now
+      if (data.raw) {
+        // Split the raw output into lines for easier viewing
+        setThoughts(data.raw.split(/\n|(?=intermediate_data: )/g).filter(Boolean));
       } else if (data.error) {
-        setSubmissionResult(`Error: ${data.error}`);
+        setThoughts([`Error: ${data.error}\n${data.details || ''}`]);
       } else {
-        setSubmissionResult("Unknown response from backend.");
+        setThoughts(["No output received from backend."]);
       }
     } catch (err) {
-      setSubmissionResult("Failed to contact backend server.");
+      setThoughts(["Failed to contact backend server."]);
     }
     setIsSubmitting(false);
+    setIsStreaming(false);
     setUserInput("");
   };
+
+  // Scroll to bottom of thoughts when new thoughts arrive
+  useEffect(() => {
+    if (thoughtsEndRef.current) {
+      thoughtsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [thoughts]);
 
   // Calculate progress metrics
   const progress = tableState.tableData ? (() => {
@@ -308,8 +323,27 @@ export default function Home() {
     : '';
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center p-4">
-      <div className="w-full flex flex-col items-center" style={{ minHeight: '75vh', width: '75vw', maxWidth: 1200 }}>
+    <div className="min-h-screen bg-gray-900 flex flex-row items-start p-4">
+      {/* Sidebar for AI thoughts */}
+      <aside className="w-1/4 min-w-[280px] max-w-xs bg-gray-800 rounded-lg shadow-lg p-4 mr-6 h-[80vh] overflow-y-auto flex flex-col">
+        <h2 className="text-gray-100 text-xl font-bold mb-4">AI Thoughts</h2>
+        <div className="flex-1 overflow-y-auto">
+          {thoughts.length === 0 && !isStreaming && (
+            <div className="text-gray-400 italic">No thoughts yet.</div>
+          )}
+          {thoughts.map((t, i) => (
+            <div key={i} className="mb-3 p-2 bg-gray-700 rounded text-gray-200 text-sm whitespace-pre-line">
+              {t}
+            </div>
+          ))}
+          <div ref={thoughtsEndRef} />
+        </div>
+        {isStreaming && (
+          <div className="text-blue-400 mt-2 animate-pulse">Streaming thoughts...</div>
+        )}
+      </aside>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col items-center" style={{ minHeight: '75vh', width: '75vw', maxWidth: 1200 }}>
         <header className="bg-gray-800 rounded-lg shadow p-4 mb-6 w-full">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-100">Data Agent Live Table Viewer</h1>
