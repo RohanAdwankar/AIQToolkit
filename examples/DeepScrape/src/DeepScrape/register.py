@@ -17,10 +17,6 @@ import httpx
 # Global table storage
 _table_storage = {}
 
-class CreateTableConfig(FunctionBaseConfig, name="create_table"):
-    """Configuration for create table tool."""
-    pass
-
 class PopulateCellConfig(FunctionBaseConfig, name="populate_cell"):
     """Configuration for populate cell tool."""
     pass
@@ -33,86 +29,29 @@ class PopulateCellsConfig(FunctionBaseConfig, name="populate_cells"):
     """Configuration for batch cell population tool."""
     pass
 
-@register_function(config_type=CreateTableConfig)
-async def create_table(config: CreateTableConfig, builder: Builder):
-    """Create a new table with specified dimensions and column names."""
-    
-    async def _create_table(rows: int, columns: list, table_id: str = "main_table") -> str:
-        """
-        Create a new table with specified dimensions and column names.
-        
-        Args:
-            rows: Number of rows in the table
-            columns: List of column names
-            table_id: Unique identifier for the table
-            
-        Returns:
-            Status message confirming table creation
-        """
-        try:
-            # Create empty DataFrame with specified structure
-            df = pd.DataFrame(index=range(rows), columns=columns)
-            df = df.fillna("") # Initialize with empty strings
-            
-            _table_storage[table_id] = df
-            
-            # Prepare data for frontend
-            table_data = {
-                "columns": list(df.columns),
-                "data": df.to_dict(orient="records"),
-            }
-            payload = {
-                "table_id": table_id,
-                "table_data": table_data,
-                "operation_message": f"Table '{table_id}' created with {rows} rows and {len(columns)} columns."
-            }
-            try:
-                async with httpx.AsyncClient() as client:
-                    await client.post("http://localhost:3000/api/table", json=payload, timeout=2.0)
-            except Exception as e:
-                pass  # Don't fail the tool if the UI is down
-            
-            # Return formatted table view
-            table_view = df.to_string(index=True, na_rep="")
-            return f"Table '{table_id}' created successfully with {rows} rows and {len(columns)} columns.\n\nCurrent table:\n{table_view}"
-            
-        except Exception as e:
-            return f"Error creating table: {str(e)}"
-    
-    yield FunctionInfo.create(single_fn=_create_table)
-
 @register_function(config_type=PopulateCellConfig)
 async def populate_cell(config: PopulateCellConfig, builder: Builder):
-    """Populate a specific cell in the table."""
-    
+    """Populate a specific cell in the table. If the table does not exist, create it with 1 row and the given column."""
     async def _populate_cell(row: int, column: str, value: str, table_id: str = "main_table") -> str:
-        """
-        Populate a specific cell in the table.
-        
-        Args:
-            row: Row index (0-based)
-            column: Column name
-            value: Value to insert
-            table_id: Table identifier
-            
-        Returns:
-            Updated table view
-        """
         try:
+            # If table does not exist, create it with 1 row and the given column
             if table_id not in _table_storage:
-                return f"Error: Table '{table_id}' does not exist. Create table first."
-            
+                df = pd.DataFrame(index=range(row+1), columns=[column])
+                df = df.fillna("")
+                _table_storage[table_id] = df
             df = _table_storage[table_id]
-            
-            if row >= len(df) or row < 0:
-                return f"Error: Row {row} is out of bounds. Table has {len(df)} rows (0-{len(df)-1})."
-            
+            # Expand DataFrame if needed
+            if row >= len(df):
+                df2 = pd.DataFrame(index=range(row+1), columns=df.columns)
+                df2 = df2.fillna("")
+                for c in df.columns:
+                    df2[c][:len(df)] = df[c]
+                df = df2
+                _table_storage[table_id] = df
             if column not in df.columns:
-                return f"Error: Column '{column}' does not exist. Available columns: {list(df.columns)}"
-            
+                df[column] = ""
             # Update the cell
-            df.iloc[row, df.columns.get_loc(column)] = value
-            
+            df.at[row, column] = value
             # Prepare data for frontend
             table_data = {
                 "columns": list(df.columns),
@@ -126,16 +65,12 @@ async def populate_cell(config: PopulateCellConfig, builder: Builder):
             try:
                 async with httpx.AsyncClient() as client:
                     await client.post("http://localhost:3000/api/table", json=payload, timeout=2.0)
-            except Exception as e:
-                pass  # Don't fail the tool if the UI is down
-            
-            # Return updated table view
+            except Exception:
+                pass
             table_view = df.to_string(index=True, na_rep="")
             return f"Cell [{row}, '{column}'] updated with value: '{value}'\n\nCurrent table:\n{table_view}"
-            
         except Exception as e:
             return f"Error updating cell: {str(e)}"
-    
     yield FunctionInfo.create(single_fn=_populate_cell)
 
 @register_function(config_type=GetTableConfig)
@@ -173,22 +108,38 @@ async def get_table(config: GetTableConfig, builder: Builder):
 
 @register_function(config_type=PopulateCellsConfig)
 async def populate_cells(config: PopulateCellsConfig, builder: Builder):
-    """Populate multiple cells in the table at once."""
+    """Populate multiple cells in the table at once. If the table does not exist, create it with the required shape."""
     async def _populate_cells(updates: list, table_id: str = "main_table") -> str:
-        """
-        Args:
-            updates: List of dicts with keys 'row', 'column', 'value'
-            table_id: Table identifier
-        Returns:
-            Status message and updated table view
-        """
         try:
+            # Determine required rows and columns
+            max_row = 0
+            columns = set()
+            for update in updates:
+                row = update.get('row', 0)
+                column = update.get('column')
+                if column is not None:
+                    columns.add(column)
+                if row is not None and row > max_row:
+                    max_row = row
             if table_id not in _table_storage:
-                return f"Error: Table '{table_id}' does not exist. Create table first."
+                df = pd.DataFrame(index=range(max_row+1), columns=list(columns))
+                df = df.fillna("")
+                _table_storage[table_id] = df
             df = _table_storage[table_id]
+            # Expand DataFrame if needed
+            if max_row >= len(df):
+                df2 = pd.DataFrame(index=range(max_row+1), columns=df.columns)
+                df2 = df2.fillna("")
+                for c in df.columns:
+                    df2[c][:len(df)] = df[c]
+                df = df2
+                _table_storage[table_id] = df
+            for column in columns:
+                if column not in df.columns:
+                    df[column] = ""
             messages = []
             for update in updates:
-                row = update.get('row')
+                row = update.get('row', 0)
                 column = update.get('column')
                 value = update.get('value')
                 if row is None or column is None:
@@ -200,7 +151,7 @@ async def populate_cells(config: PopulateCellsConfig, builder: Builder):
                 if column not in df.columns:
                     messages.append(f"Column '{column}' does not exist.")
                     continue
-                df.iloc[row, df.columns.get_loc(column)] = value
+                df.at[row, column] = value
                 messages.append(f"Cell [{row}, '{column}'] updated.")
             # Prepare data for frontend
             table_data = {
