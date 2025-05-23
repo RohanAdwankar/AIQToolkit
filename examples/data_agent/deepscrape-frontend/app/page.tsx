@@ -84,6 +84,9 @@ export default function Home() {
     error: null,
     operationMessage: null,
   });
+  const [userInput, setUserInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState<string|null>(null);
 
   // Poll the backend API for table updates every 2 seconds
   useEffect(() => {
@@ -126,6 +129,33 @@ export default function Home() {
       clearInterval(interval);
     };
   }, []);
+
+  // Handle user input submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim()) return;
+    setIsSubmitting(true);
+    setSubmissionResult(null);
+    try {
+      const resp = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input_message: userInput }),
+      });
+      const data = await resp.json();
+      if (data.value) {
+        setSubmissionResult(data.value);
+      } else if (data.error) {
+        setSubmissionResult(`Error: ${data.error}`);
+      } else {
+        setSubmissionResult("Unknown response from backend.");
+      }
+    } catch (err) {
+      setSubmissionResult("Failed to contact backend server.");
+    }
+    setIsSubmitting(false);
+    setUserInput("");
+  };
 
   // Calculate progress metrics
   const progress = tableState.tableData ? (() => {
@@ -170,6 +200,31 @@ export default function Home() {
       </header>
 
       <main className="flex-1">
+        {/* --- User Input Form --- */}
+        <form onSubmit={handleSubmit} className="mb-6 flex flex-col sm:flex-row gap-2 items-center justify-center">
+          <input
+            type="text"
+            className="flex-1 rounded bg-gray-800 border border-gray-700 text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ask a question or request a chart..."
+            value={userInput}
+            onChange={e => setUserInput(e.target.value)}
+            disabled={isSubmitting}
+            required
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50"
+            disabled={isSubmitting || !userInput.trim()}
+          >
+            {isSubmitting ? "Submitting..." : "Submit"}
+          </button>
+        </form>
+        {submissionResult && (
+          <div className="mb-4 text-center text-sm text-blue-300">
+            {submissionResult}
+          </div>
+        )}
+
         {tableState.error && (
           <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4" role="alert">
             <strong className="font-bold">Error:</strong>
