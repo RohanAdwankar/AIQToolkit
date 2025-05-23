@@ -18,7 +18,8 @@ Though they generate large volumes of text its difficult to then continue the an
 3. **Output Results**: Present complete table live as the AI edits the table
 
 ## Installation
-1. clone the repo and follow steps from root README.md on how to install aiq and cd into examples
+1. [Build AIQ from source](https://github.com/NVIDIA/AIQToolkit/blob/develop/README.md) and cd into examples
 2. uv pip install -e data_agent
 3. aiq serve --config_file 'data_agent/configs/config.yml'
 4. cd deepscrape-frontend && npm run build && npm run start
+5. open http://localhost:3000/
