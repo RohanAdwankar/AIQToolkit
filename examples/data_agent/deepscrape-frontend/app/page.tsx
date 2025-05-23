@@ -60,8 +60,9 @@ function BarChart({ columns, data }: { columns: string[]; data: Record<string, s
   }
   const maxY = Math.max(...bars.map(b => b.y));
   const chartHeight = 200;
-  const chartWidth = Math.max(320, bars.length * 60);
-  const barWidth = Math.max(20, chartWidth / (bars.length * 1.5));
+  const chartWidth = Math.max(800, bars.length * 60);
+  const barGap = 10; // increased gap
+  const barWidth = Math.max(20, (chartWidth - (bars.length - 1) * barGap) / bars.length);
   return (
     <div className="w-full flex flex-col items-center my-8">
       <h3 className="text-gray-200 text-lg font-semibold mb-2">Bar Chart ({xKey} vs {yKey})</h3>
@@ -71,7 +72,7 @@ function BarChart({ columns, data }: { columns: string[]; data: Record<string, s
           return (
             <g key={i}>
               <rect
-                x={i * (barWidth + 10) + 30}
+                x={i * (barWidth + barGap) + 30}
                 y={chartHeight - barHeight - 20}
                 width={barWidth}
                 height={barHeight}
@@ -79,7 +80,7 @@ function BarChart({ columns, data }: { columns: string[]; data: Record<string, s
                 rx={4}
               />
               <text
-                x={i * (barWidth + 10) + 30 + barWidth / 2}
+                x={i * (barWidth + barGap) + 30 + barWidth / 2}
                 y={chartHeight - 5}
                 textAnchor="middle"
                 fontSize="12"
@@ -198,7 +199,7 @@ function BrokenYAxisBarChart({ columns, data }: { columns: string[]; data: Recor
   const median = ys[Math.floor(ys.length / 2)];
   const threshold = median * 2;
   const chartHeight = 200;
-  const chartWidth = Math.max(320, bars.length * 60);
+  const chartWidth = Math.max(600, bars.length * 60);
   const barWidth = Math.max(20, chartWidth / (bars.length * 1.5));
   const maxY = Math.max(...bars.map(b => b.y));
   const breakHeight = 30;
@@ -253,7 +254,6 @@ function BrokenYAxisBarChart({ columns, data }: { columns: string[]; data: Recor
         <text x={10} y={30} fontSize="12" fill="#d1d5db" textAnchor="start" transform={`rotate(-90 40,60)`}>{yKey}</text>
         {/* Break indicator */}
         <rect x={20} y={chartHeight - 20} width={chartWidth - 40} height={breakHeight} fill="#222" opacity={0.2} />
-        <text x={chartWidth / 2} y={chartHeight - 5 + breakHeight / 2} textAnchor="middle" fontSize="14" fill="#fbbf24">//</text>
       </svg>
     </div>
   );
@@ -324,7 +324,7 @@ function ChartCarousel({ charts }: { charts: { name: string; element: React.Reac
   console.log('ChartCarousel: rendering', charts[idx].name, charts[idx].element);
   return (
     <div className="w-full flex flex-col items-center my-8">
-      <div className="flex items-center gap-4 mb-2">
+      <div className="flex items-center gap-7 mb-2">
         <button
           onClick={goLeft}
           className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-500 shadow"
@@ -452,154 +452,154 @@ export default function Home() {
     : '';
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col p-4">
-      <header className="bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-100">Data Agent Live Table Viewer</h1>
-          <div className="flex items-center gap-2">
-            <div className={`h-3 w-3 rounded-full ${tableState.status === "success" ? 'bg-green-400' :
-              tableState.status === "error" ? 'bg-red-500' : 'bg-yellow-400'
-              }`}></div>
-            <span className="text-sm text-gray-300 capitalize">
-              {tableState.status}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1">
-        {/* --- User Input Form --- */}
-        <form onSubmit={handleSubmit} className="mb-6 flex flex-col sm:flex-row gap-2 items-center justify-center">
-          <input
-            type="text"
-            className="flex-1 rounded bg-gray-800 border border-gray-700 text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ask a question or request a chart..."
-            value={userInput}
-            onChange={e => setUserInput(e.target.value)}
-            disabled={isSubmitting}
-            required
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50"
-            disabled={isSubmitting || !userInput.trim()}
-          >
-            {isSubmitting ? "Submitting..." : "Submit"}
-          </button>
-        </form>
-
-        {tableState.error && (
-          <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4" role="alert">
-            <strong className="font-bold">Error:</strong>
-            <span className="block sm:inline"> {tableState.error}</span>
-          </div>
-        )}
-
-        {tableState.operationMessage && (
-          <div className="bg-blue-900 border border-blue-700 text-blue-200 px-4 py-3 rounded mb-4" role="alert">
-            <strong className="font-bold">Operation:</strong>
-            <span className="block sm:inline"> {tableState.operationMessage}</span>
-          </div>
-        )}
-
-        {!tableState.tableData && tableState.status !== "error" && (
-          <div className="bg-gray-800 rounded-lg shadow p-8 text-center">
-            <div className="animate-spin w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-300">Waiting for table creation...</p>
-            <p className="text-sm text-gray-400 mt-2">
-              The data agent will create and populate a table here.
-            </p>
-          </div>
-        )}
-
-        {tableState.tableData && progress && (
-          <>
-            <div className="bg-gray-800 rounded-lg shadow overflow-hidden">
-              <div className="p-4 border-b border-gray-700">
-                <div className="flex justify-between items-center mb-2">
-                  <h2 className="font-semibold text-gray-200">Table Progress</h2>
-                  <span className="text-sm text-gray-400">Last updated: {formattedTime}</span>
-                </div>
-
-                <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
-                  <div
-                    className="bg-blue-500 h-4 rounded-full transition-all duration-500"
-                    style={{ width: `${progress.percentage}%` }}
-                  ></div>
-                </div>
-
-                <div className="flex justify-between text-sm text-gray-400">
-                  <span>{progress.filledCells} / {progress.totalCells} cells filled</span>
-                  <span>{progress.percentage}% complete</span>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-700">
-                  <thead className="bg-gray-900">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Row
-                      </th>
-                      {tableState.tableData?.columns.map((column, idx) => (
-                        <th
-                          key={idx}
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
-                        >
-                          {column}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-gray-900 divide-y divide-gray-800">
-                    {tableState.tableData?.data.map((row, rowIdx) => (
-                      <tr key={rowIdx}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">
-                          {rowIdx}
-                        </td>
-                        {tableState.tableData?.columns.map((column, colIdx) => {
-                          const cellValueRaw = row[column];
-                          const cellValue = String(cellValueRaw ?? '');
-                          let isEmpty = false;
-                          try {
-                            isEmpty = cellValue.trim() === '';
-                          } catch (cellErr) {
-                            // eslint-disable-next-line no-console
-                            console.error(`Error in .trim() for cell at row ${rowIdx}, column '${column}':`, cellErr, cellValueRaw);
-                            isEmpty = false;
-                          }
-                          return (
-                            <td
-                              key={colIdx}
-                              className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${isEmpty ? 'bg-yellow-900 text-yellow-300 italic' : 'bg-blue-900 text-gray-100'
-                                }`}
-                            >
-                              {isEmpty ? '(empty)' : cellValue}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+    <div className="min-h-screen bg-gray-900 flex flex-col items-center p-4">
+      <div className="w-full flex flex-col items-center" style={{ minHeight: '75vh', width: '75vw', maxWidth: 1200 }}>
+        <header className="bg-gray-800 rounded-lg shadow p-4 mb-6 w-full">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-100">Data Agent Live Table Viewer</h1>
+            <div className="flex items-center gap-2">
+              <div className={`h-3 w-3 rounded-full ${tableState.status === "success" ? 'bg-green-400' :
+                tableState.status === "error" ? 'bg-red-500' : 'bg-yellow-400'
+                }`}></div>
+              <span className="text-sm text-gray-300 capitalize">
+                {tableState.status}
+              </span>
             </div>
-            <ChartCarousel
-              charts={[
-                { name: "Bar Chart", element: <BarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                { name: "Pie Chart", element: <PieChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                { name: "Broken Y Axis Bar Chart", element: <BrokenYAxisBarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                { name: "Scatter Plot", element: <ScatterPlot columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-              ]}
+          </div>
+        </header>
+        <main className="flex-1 w-full">
+          {/* --- User Input Form --- */}
+          <form onSubmit={handleSubmit} className="mb-6 flex flex-col sm:flex-row gap-2 items-center justify-center">
+            <input
+              type="text"
+              className="flex-1 rounded bg-gray-800 border border-gray-700 text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ask a question or request a chart..."
+              value={userInput}
+              onChange={e => setUserInput(e.target.value)}
+              disabled={isSubmitting}
+              required
             />
-          </>
-        )}
-      </main>
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50"
+              disabled={isSubmitting || !userInput.trim()}
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </button>
+          </form>
 
-      <footer className="mt-8 text-center text-sm text-gray-500">
-        <p>Data Agent Table Visualization - Real-time agent workflow viewer</p>
-      </footer>
+          {tableState.error && (
+            <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4" role="alert">
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline"> {tableState.error}</span>
+            </div>
+          )}
+
+          {tableState.operationMessage && (
+            <div className="bg-blue-900 border border-blue-700 text-blue-200 px-4 py-3 rounded mb-4" role="alert">
+              <strong className="font-bold">Operation:</strong>
+              <span className="block sm:inline"> {tableState.operationMessage}</span>
+            </div>
+          )}
+
+          {!tableState.tableData && tableState.status !== "error" && (
+            <div className="bg-gray-800 rounded-lg shadow p-8 text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-300">Waiting for table creation...</p>
+              <p className="text-sm text-gray-400 mt-2">
+                The data agent will create and populate a table here.
+              </p>
+            </div>
+          )}
+
+          {tableState.tableData && progress && (
+            <>
+              <div className="bg-gray-800 rounded-lg shadow overflow-hidden">
+                <div className="p-4 border-b border-gray-700">
+                  <div className="flex justify-between items-center mb-2">
+                    <h2 className="font-semibold text-gray-200">Table Progress</h2>
+                    <span className="text-sm text-gray-400">Last updated: {formattedTime}</span>
+                  </div>
+
+                  <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
+                    <div
+                      className="bg-blue-500 h-4 rounded-full transition-all duration-500"
+                      style={{ width: `${progress.percentage}%` }}
+                    ></div>
+                  </div>
+
+                  <div className="flex justify-between text-sm text-gray-400">
+                    <span>{progress.filledCells} / {progress.totalCells} cells filled</span>
+                    <span>{progress.percentage}% complete</span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-900">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          Row
+                        </th>
+                        {tableState.tableData?.columns.map((column, idx) => (
+                          <th
+                            key={idx}
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                          >
+                            {column}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-gray-900 divide-y divide-gray-800">
+                      {tableState.tableData?.data.map((row, rowIdx) => (
+                        <tr key={rowIdx}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">
+                            {rowIdx}
+                          </td>
+                          {tableState.tableData?.columns.map((column, colIdx) => {
+                            const cellValueRaw = row[column];
+                            const cellValue = String(cellValueRaw ?? '');
+                            let isEmpty = false;
+                            try {
+                              isEmpty = cellValue.trim() === '';
+                            } catch (cellErr) {
+                              // eslint-disable-next-line no-console
+                              console.error(`Error in .trim() for cell at row ${rowIdx}, column '${column}':`, cellErr, cellValueRaw);
+                              isEmpty = false;
+                            }
+                            return (
+                              <td
+                                key={colIdx}
+                                className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${isEmpty ? 'bg-yellow-900 text-yellow-300 italic' : 'bg-blue-900 text-gray-100'
+                                  }`}
+                              >
+                                {isEmpty ? '(empty)' : cellValue}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <ChartCarousel
+                charts={[
+                  { name: "Bar Chart", element: <BarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Pie Chart", element: <PieChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Broken Y Axis Bar Chart", element: <BrokenYAxisBarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Scatter Plot", element: <ScatterPlot columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                ]}
+              />
+            </>
+          )}
+        </main>
+        <footer className="mt-8 text-center text-sm text-gray-500 w-full">
+          <p>Data Agent Table Visualization - Real-time agent workflow viewer</p>
+        </footer>
+      </div>
     </div>
   );
 }
