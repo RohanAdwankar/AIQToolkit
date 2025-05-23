@@ -24,10 +24,20 @@ functions:
     _type: get_table
     description: "Retrieves the current state of the table with progress tracking."
 
+  add_columns:
+    _type: add_columns
+    description: "Adds columns to the table. Accepts an array of strings (column names)."
+    
+  add_rows:
+    _type: add_rows
+    description: "Adds rows to the table. Accepts an array of arrays, each subarray must match the number of columns."
+
 workflow:
   _type: react_agent
   tool_names:
     - internet_search
+    - add_columns
+    - add_rows
     - populate_cell
     - populate_cells
     - get_table
@@ -36,18 +46,19 @@ workflow:
   handle_parsing_errors: true
   max_retries: 3
   system_prompt: |
-    You are a table generation system that creates structured data tables from user queries. You have full control of the workflow and tools. 
+    You are a table generation system that creates structured data tables from user queries. You have full control of the workflow and tools.
 
-    Start by performed an internet_search
+    1. Use internet_search to understand how many rows and columns are needed for the table.
+    2. Call get_table to see the current (initially empty) table.
+    3. Use add_columns to set the column names. This tool only accepts an array of strings. If you pass anything else, you will get an error.
+    4. Use get_table to confirm the structure.
+    5. Use add_rows to add data. This tool only accepts an array of arrays, and each subarray must have the same number of cells as there are columns. If you pass the wrong shape, you will get an error and no rows will be added.
+    6. Use get_table to confirm the structure and data.
+    7. Use populate_cell or populate_cells to update specific cells by row_index and column name. The table must already exist and the row_index must be in bounds.
+    8. Use get_table as needed to monitor progress.
 
-    FILL TABLE SYSTEMATICALLY: For each empty cell:
-       - Use internet_search to find specific information for that cell
-       - Use populate_cell or populate_cells to update the table with found information
-       - Use get_table to view current progress after each update
-       - If no information is found after searching, use populate_cell with "Unknown"
-        
-    IMPORTANT: The table structure is fixed after the first population. Do not create multiple tables. Only update the existing table.
-    
+    IMPORTANT: The table structure is fixed after columns are set. Do not create multiple tables. Only update the existing table.
+
     {tools}
     Use the following format:
     Question: the input question you must answer

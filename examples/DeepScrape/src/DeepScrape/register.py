@@ -14,8 +14,8 @@ import pandas as pd
 from typing import Optional, Dict, Any
 import httpx
 
-# Global table storage
-_table_storage = {}
+# Start with an empty DataFrame
+_table_storage = {"main_table": pd.DataFrame()}
 
 class PopulateCellConfig(FunctionBaseConfig, name="populate_cell"):
     """Configuration for populate cell tool."""
@@ -29,30 +29,70 @@ class PopulateCellsConfig(FunctionBaseConfig, name="populate_cells"):
     """Configuration for batch cell population tool."""
     pass
 
+class AddColumnsConfig(FunctionBaseConfig, name="add_columns"):
+    """Configuration for add columns tool."""
+    pass
+
+class AddRowsConfig(FunctionBaseConfig, name="add_rows"):
+    """Configuration for add rows tool."""
+    pass
+
+@register_function(config_type=AddColumnsConfig)
+async def add_columns(config: AddColumnsConfig, builder: Builder):
+    """Add columns to the table. Accepts an array of strings (column names)."""
+    async def _add_columns(columns: list, table_id: str = "main_table") -> str:
+        try:
+            df = _table_storage.get(table_id, pd.DataFrame())
+            if not isinstance(columns, list) or not all(isinstance(c, str) for c in columns):
+                return "Error: columns must be an array of strings."
+            if not df.empty and len(df.columns) > 0:
+                return f"Error: Columns already exist: {list(df.columns)}. Cannot add more columns."
+            df = pd.DataFrame(columns=columns)
+            _table_storage[table_id] = df
+            table_view = df.to_string(index=True, na_rep="")
+            return f"Columns set to: {columns}\n\nCurrent table:\n{table_view}"
+        except Exception as e:
+            return f"Error adding columns: {str(e)}"
+    yield FunctionInfo.create(single_fn=_add_columns)
+
+@register_function(config_type=AddRowsConfig)
+async def add_rows(config: AddRowsConfig, builder: Builder):
+    """Add rows to the table. Accepts an array of arrays, each subarray must match the number of columns."""
+    async def _add_rows(rows: list, table_id: str = "main_table") -> str:
+        try:
+            df = _table_storage.get(table_id, pd.DataFrame())
+            if df.empty or len(df.columns) == 0:
+                return "Error: Add columns first before adding rows."
+            if not isinstance(rows, list) or not all(isinstance(r, list) for r in rows):
+                return "Error: rows must be an array of arrays."
+            n_cols = len(df.columns)
+            valid_rows = [r for r in rows if len(r) == n_cols]
+            invalid_rows = [r for r in rows if len(r) != n_cols]
+            if invalid_rows:
+                return f"Error: All rows must have {n_cols} cells. Invalid rows: {invalid_rows}"
+            new_df = pd.DataFrame(valid_rows, columns=df.columns)
+            df = pd.concat([df, new_df], ignore_index=True)
+            _table_storage[table_id] = df
+            table_view = df.to_string(index=True, na_rep="")
+            return f"Added {len(valid_rows)} rows.\n\nCurrent table:\n{table_view}"
+        except Exception as e:
+            return f"Error adding rows: {str(e)}"
+    yield FunctionInfo.create(single_fn=_add_rows)
+
 @register_function(config_type=PopulateCellConfig)
 async def populate_cell(config: PopulateCellConfig, builder: Builder):
-    """Populate a specific cell in the table. If the table does not exist, create it with 1 row and the given column."""
-    async def _populate_cell(row: int, column: str, value: str, table_id: str = "main_table") -> str:
+    """Populate a specific cell in the table by row_index and column. Table must already exist."""
+    async def _populate_cell(row_index: int, column: str, value: str, table_id: str = "main_table") -> str:
         try:
-            # If table does not exist, create it with 1 row and the given column
-            if table_id not in _table_storage:
-                df = pd.DataFrame(index=range(row+1), columns=[column])
-                df = df.fillna("")
-                _table_storage[table_id] = df
-            df = _table_storage[table_id]
-            # Expand DataFrame if needed
-            if row >= len(df):
-                df2 = pd.DataFrame(index=range(row+1), columns=df.columns)
-                df2 = df2.fillna("")
-                for c in df.columns:
-                    df2[c][:len(df)] = df[c]
-                df = df2
-                _table_storage[table_id] = df
+            df = _table_storage.get(table_id, pd.DataFrame())
+            if df.empty or len(df.columns) == 0:
+                return "Error: Add columns and rows before populating cells."
+            if row_index >= len(df) or row_index < 0:
+                return f"Error: row_index {row_index} is out of bounds. Table has {len(df)} rows (0-{len(df)-1})."
             if column not in df.columns:
-                df[column] = ""
-            # Update the cell
-            df.at[row, column] = value
-            # Prepare data for frontend
+                return f"Error: Column '{column}' does not exist. Available columns: {list(df.columns)}"
+            df.at[row_index, column] = value
+            _table_storage[table_id] = df
             table_data = {
                 "columns": list(df.columns),
                 "data": df.to_dict(orient="records"),
@@ -60,7 +100,7 @@ async def populate_cell(config: PopulateCellConfig, builder: Builder):
             payload = {
                 "table_id": table_id,
                 "table_data": table_data,
-                "operation_message": f"Cell [{row}, '{column}'] updated with value: '{value}'"
+                "operation_message": f"Cell [{row_index}, '{column}'] updated with value: '{value}'"
             }
             try:
                 async with httpx.AsyncClient() as client:
@@ -68,7 +108,7 @@ async def populate_cell(config: PopulateCellConfig, builder: Builder):
             except Exception:
                 pass
             table_view = df.to_string(index=True, na_rep="")
-            return f"Cell [{row}, '{column}'] updated with value: '{value}'\n\nCurrent table:\n{table_view}"
+            return f"Cell [{row_index}, '{column}'] updated with value: '{value}'\n\nCurrent table:\n{table_view}"
         except Exception as e:
             return f"Error updating cell: {str(e)}"
     yield FunctionInfo.create(single_fn=_populate_cell)
@@ -108,52 +148,29 @@ async def get_table(config: GetTableConfig, builder: Builder):
 
 @register_function(config_type=PopulateCellsConfig)
 async def populate_cells(config: PopulateCellsConfig, builder: Builder):
-    """Populate multiple cells in the table at once. If the table does not exist, create it with the required shape."""
+    """Populate multiple cells in the table at once by row_index and column. Table must already exist."""
     async def _populate_cells(updates: list, table_id: str = "main_table") -> str:
         try:
-            # Determine required rows and columns
-            max_row = 0
-            columns = set()
-            for update in updates:
-                row = update.get('row', 0)
-                column = update.get('column')
-                if column is not None:
-                    columns.add(column)
-                if row is not None and row > max_row:
-                    max_row = row
-            if table_id not in _table_storage:
-                df = pd.DataFrame(index=range(max_row+1), columns=list(columns))
-                df = df.fillna("")
-                _table_storage[table_id] = df
-            df = _table_storage[table_id]
-            # Expand DataFrame if needed
-            if max_row >= len(df):
-                df2 = pd.DataFrame(index=range(max_row+1), columns=df.columns)
-                df2 = df2.fillna("")
-                for c in df.columns:
-                    df2[c][:len(df)] = df[c]
-                df = df2
-                _table_storage[table_id] = df
-            for column in columns:
-                if column not in df.columns:
-                    df[column] = ""
+            df = _table_storage.get(table_id, pd.DataFrame())
+            if df.empty or len(df.columns) == 0:
+                return "Error: Add columns and rows before populating cells."
             messages = []
             for update in updates:
-                row = update.get('row', 0)
+                row_index = update.get('row_index', 0)
                 column = update.get('column')
                 value = update.get('value')
-                if row is None or column is None:
-                    messages.append(f"Missing row/column in update: {update}")
+                if row_index is None or column is None:
+                    messages.append(f"Missing row_index/column in update: {update}")
                     continue
-                if row >= len(df) or row < 0:
-                    messages.append(f"Row {row} out of bounds.")
+                if row_index >= len(df) or row_index < 0:
+                    messages.append(f"row_index {row_index} out of bounds.")
                     continue
                 if column not in df.columns:
                     messages.append(f"Column '{column}' does not exist.")
                     continue
-                df.at[row, column] = value
-                messages.append(f"Cell [{row}, '{column}'] updated.")
-            # Prepare data for frontend
+                df.at[row_index, column] = value
+                messages.append(f"Cell [{row_index}, '{column}'] updated.")
+            _table_storage[table_id] = df
             table_data = {
                 "columns": list(df.columns),
                 "data": df.to_dict(orient="records"),
