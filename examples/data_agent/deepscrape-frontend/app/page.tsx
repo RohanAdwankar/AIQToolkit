@@ -272,17 +272,54 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input_message: userInput }),
       });
-      const data = await resp.json();
-      console.log('[FRONTEND] /api/ask response:', data);
-      // DEBUG: Show the raw output in the sidebar for now
-      if (data.raw) {
-        const split = data.raw.split(/\n|(?=intermediate_data: )/g).filter(Boolean);
-        console.log('[FRONTEND] Split thoughts:', split);
-        setThoughts(split);
-      } else if (data.error) {
-        setThoughts([`Error: ${data.error}\n${data.details || ''}`]);
-      } else {
-        setThoughts(["No output received from backend."]);
+      if (!resp.body) {
+        setThoughts(["No response body from backend."]);
+        setIsStreaming(false);
+        setIsSubmitting(false);
+        setUserInput("");
+        return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let done = false;
+      let newThoughts: string[] = [];
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          // Parse SSE events (split on double newlines)
+          const events = buffer.split(/\n\n/);
+          // Keep the last partial event in buffer
+          buffer = events.pop() || "";
+          for (const event of events) {
+            if (event.startsWith("data: ")) {
+              // Remove 'data: ' from each line, join lines
+              const lines = event.split(/\n/).map(l => l.replace(/^data: /, ""));
+              const text = lines.join("\n").trim();
+              if (text) {
+                newThoughts = [...newThoughts, text];
+                setThoughts([...newThoughts]);
+              }
+            } else if (event.startsWith("event: error")) {
+              setThoughts([`Error: ${event}`]);
+              setIsStreaming(false);
+              setIsSubmitting(false);
+              setUserInput("");
+              return;
+            }
+          }
+        }
+      }
+      // Flush any remaining buffer
+      if (buffer.trim()) {
+        const lines = buffer.split(/\n/).map(l => l.replace(/^data: /, ""));
+        const text = lines.join("\n").trim();
+        if (text) {
+          newThoughts = [...newThoughts, text];
+          setThoughts([...newThoughts]);
+        }
       }
     } catch (err) {
       console.error('[FRONTEND] Error in handleSubmit:', err);
