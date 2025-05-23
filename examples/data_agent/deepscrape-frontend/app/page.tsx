@@ -67,10 +67,19 @@ function BarChartRecharts({ columns, data }: { columns: string[]; data: Record<s
       <ResponsiveContainer width="100%" height="90%">
         <ReBarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xKey} angle={-20} textAnchor="end" interval={0} height={60} />
-          <YAxis />
-          <Tooltip />
-          <Legend />
+          <XAxis dataKey={xKey} angle={-20} textAnchor="end" interval={0} height={60}
+            tick={{ fill: '#fff', fontWeight: 'bold' }}
+            axisLine={{ stroke: '#fff' }}
+            tickLine={{ stroke: '#fff' }}
+          />
+          <YAxis
+            tick={{ fill: '#fff', fontWeight: 'bold' }}
+            axisLine={{ stroke: '#fff' }}
+            tickLine={{ stroke: '#fff' }}
+          />
+          <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
+            itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
+          <Legend wrapperStyle={{ color: '#fff', fontWeight: 'bold' }} />
           <Bar dataKey={yKey} fill="#3b82f6" activeBar={<Rectangle fill="pink" stroke="blue" />} />
         </ReBarChart>
       </ResponsiveContainer>
@@ -91,10 +100,19 @@ function LineChartRecharts({ columns, data }: { columns: string[]; data: Record<
       <ResponsiveContainer width="100%" height="90%">
         <ReLineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xKey} angle={-20} textAnchor="end" interval={0} height={60} />
-          <YAxis />
-          <Tooltip />
-          <Legend />
+          <XAxis dataKey={xKey} angle={-20} textAnchor="end" interval={0} height={60}
+            tick={{ fill: '#fff', fontWeight: 'bold' }}
+            axisLine={{ stroke: '#fff' }}
+            tickLine={{ stroke: '#fff' }}
+          />
+          <YAxis
+            tick={{ fill: '#fff', fontWeight: 'bold' }}
+            axisLine={{ stroke: '#fff' }}
+            tickLine={{ stroke: '#fff' }}
+          />
+          <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
+            itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
+          <Legend wrapperStyle={{ color: '#fff', fontWeight: 'bold' }} />
           <Line type="monotone" dataKey={yKey1} stroke="#8884d8" activeDot={{ r: 8 }} />
           {yKey2 !== yKey1 && <Line type="monotone" dataKey={yKey2} stroke="#82ca9d" />}
         </ReLineChart>
@@ -115,9 +133,18 @@ function ScatterChartRecharts({ columns, data }: { columns: string[]; data: Reco
       <ResponsiveContainer width="100%" height="90%">
         <ReScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
           <CartesianGrid />
-          <XAxis type="number" dataKey={xKey} name={xKey} />
-          <YAxis type="number" dataKey={yKey} name={yKey} />
-          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+          <XAxis type="number" dataKey={xKey} name={xKey}
+            tick={{ fill: '#fff', fontWeight: 'bold' }}
+            axisLine={{ stroke: '#fff' }}
+            tickLine={{ stroke: '#fff' }}
+          />
+          <YAxis type="number" dataKey={yKey} name={yKey}
+            tick={{ fill: '#fff', fontWeight: 'bold' }}
+            axisLine={{ stroke: '#fff' }}
+            tickLine={{ stroke: '#fff' }}
+          />
+          <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
+            itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
           <Scatter name="Data" data={chartData} fill="#a78bfa" />
         </ReScatterChart>
       </ResponsiveContainer>
@@ -136,7 +163,9 @@ function PieChartRecharts({ columns, data }: { columns: string[]; data: Record<s
       <h3 className="text-gray-200 text-lg font-semibold mb-2">Pie Chart ({nameKey} breakdown)</h3>
       <ResponsiveContainer width="100%" height="90%">
         <RePieChart>
-          <Pie data={chartData} dataKey={valueKey} nameKey={nameKey} cx="50%" cy="50%" outerRadius={120} fill="#8884d8" label />
+          <Pie data={chartData} dataKey={valueKey} nameKey={nameKey} cx="50%" cy="50%" outerRadius={120} fill="#8884d8" label={{ fill: '#fff', fontWeight: 'bold' }} />
+          <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
+            itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
         </RePieChart>
       </ResponsiveContainer>
     </div>
