@@ -69,14 +69,26 @@ export default function Home() {
 
   // Calculate progress metrics
   const progress = tableState.tableData ? (() => {
-    const totalCells = tableState.tableData.data.length * tableState.tableData.columns.length;
-    const filledCells = tableState.tableData.data.reduce((count, row) => {
-      return count + tableState.tableData!.columns.filter(col => row[col] && row[col].trim() !== "").length;
-    }, 0);
-    const emptyCells = totalCells - filledCells;
-    const percentage = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
-    
-    return { totalCells, filledCells, emptyCells, percentage };
+    try {
+      const totalCells = tableState.tableData.data.length * tableState.tableData.columns.length;
+      const filledCells = tableState.tableData.data.reduce((count, row, rowIdx) => {
+        return count + tableState.tableData!.columns.filter((col, colIdx) => {
+          const cellValue = row[col];
+          if (typeof cellValue !== 'string') {
+            // eslint-disable-next-line no-console
+            console.error(`Non-string cell value in progress calculation at row ${rowIdx}, column '${col}':`, cellValue);
+          }
+          return typeof cellValue === 'string' && cellValue.trim() !== "";
+        }).length;
+      }, 0);
+      const emptyCells = totalCells - filledCells;
+      const percentage = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
+      return { totalCells, filledCells, emptyCells, percentage };
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Error calculating progress:', err, tableState.tableData);
+      return { totalCells: 0, filledCells: 0, emptyCells: 0, percentage: 0 };
+    }
   })() : null;
 
   // Format timestamp
@@ -173,8 +185,18 @@ export default function Home() {
                       </td>
                       {tableState.tableData?.columns.map((column, colIdx) => {
                         const cellValue = row[column] || '';
-                        const isEmpty = cellValue.trim() === '';
-                        
+                        let isEmpty = false;
+                        try {
+                          if (typeof cellValue !== 'string') {
+                            // eslint-disable-next-line no-console
+                            console.error(`Non-string cell value in table render at row ${rowIdx}, column '${column}':`, cellValue);
+                          }
+                          isEmpty = typeof cellValue === 'string' ? cellValue.trim() === '' : false;
+                        } catch (cellErr) {
+                          // eslint-disable-next-line no-console
+                          console.error(`Error in .trim() for cell at row ${rowIdx}, column '${column}':`, cellErr, cellValue);
+                          isEmpty = false;
+                        }
                         return (
                           <td 
                             key={colIdx} 
