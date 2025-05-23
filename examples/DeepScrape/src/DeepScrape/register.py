@@ -50,6 +50,22 @@ async def add_columns(config: AddColumnsConfig, builder: Builder):
             df = pd.DataFrame(columns=columns)
             _table_storage[table_id] = df
             table_view = df.to_string(index=True, na_rep="")
+            # --- Webview sync ---
+            table_data = {
+                "columns": list(df.columns),
+                "data": df.to_dict(orient="records"),
+            }
+            payload = {
+                "table_id": table_id,
+                "table_data": table_data,
+                "operation_message": f"Columns set to: {columns}"
+            }
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.post("http://localhost:3000/api/table", json=payload, timeout=2.0)
+            except Exception:
+                pass
+            # --- End webview sync ---
             return f"Columns set to: {columns}\n\nCurrent table:\n{table_view}"
         except Exception as e:
             return f"Error adding columns: {str(e)}"
@@ -74,6 +90,22 @@ async def add_rows(config: AddRowsConfig, builder: Builder):
             df = pd.concat([df, new_df], ignore_index=True)
             _table_storage[table_id] = df
             table_view = df.to_string(index=True, na_rep="")
+            # --- Webview sync ---
+            table_data = {
+                "columns": list(df.columns),
+                "data": df.to_dict(orient="records"),
+            }
+            payload = {
+                "table_id": table_id,
+                "table_data": table_data,
+                "operation_message": f"Added {len(valid_rows)} rows."
+            }
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.post("http://localhost:3000/api/table", json=payload, timeout=2.0)
+            except Exception:
+                pass
+            # --- End webview sync ---
             return f"Added {len(valid_rows)} rows.\n\nCurrent table:\n{table_view}"
         except Exception as e:
             return f"Error adding rows: {str(e)}"
