@@ -25,13 +25,13 @@ functions:
     _type: populate_cell
     description: "Populates a specific cell in the table with data."
     
+  populate_cells:
+    _type: populate_cells
+    description: "Populates multiple cells in the table in a single call."
+    
   get_table:
     _type: get_table
     description: "Retrieves the current state of the table with progress tracking."
-    
-  export_table:
-    _type: export_table
-    description: "Exports the final table in various formats (CSV, JSON, Markdown)."
     
   search_agent:
     _type: tool_calling_agent
@@ -48,8 +48,8 @@ functions:
       - search_agent
       - create_table
       - populate_cell
+      - populate_cells
       - get_table
-      - export_table
     llm_name: agent_orchestrator
     verbose: true
     handle_tool_errors: true

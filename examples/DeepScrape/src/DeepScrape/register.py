@@ -29,8 +29,8 @@ class GetTableConfig(FunctionBaseConfig, name="get_table"):
     """Configuration for get table tool."""
     pass
 
-class ExportTableConfig(FunctionBaseConfig, name="export_table"):
-    """Configuration for export table tool."""
+class PopulateCellsConfig(FunctionBaseConfig, name="populate_cells"):
+    """Configuration for batch cell population tool."""
     pass
 
 @register_function(config_type=CreateTableConfig)
@@ -171,37 +171,54 @@ async def get_table(config: GetTableConfig, builder: Builder):
     
     yield FunctionInfo.create(single_fn=_get_table)
 
-@register_function(config_type=ExportTableConfig)
-async def export_table(config: ExportTableConfig, builder: Builder):
-    """Export the table in specified format."""
-    
-    async def _export_table(table_id: str = "main_table", format: str = "csv") -> str:
+@register_function(config_type=PopulateCellsConfig)
+async def populate_cells(config: PopulateCellsConfig, builder: Builder):
+    """Populate multiple cells in the table at once."""
+    async def _populate_cells(updates: list, table_id: str = "main_table") -> str:
         """
-        Export the table in specified format.
-        
         Args:
+            updates: List of dicts with keys 'row', 'column', 'value'
             table_id: Table identifier
-            format: Export format (csv, json, markdown)
-            
         Returns:
-            Exported table data
+            Status message and updated table view
         """
         try:
             if table_id not in _table_storage:
-                return f"Error: Table '{table_id}' does not exist."
-            
+                return f"Error: Table '{table_id}' does not exist. Create table first."
             df = _table_storage[table_id]
-            
-            if format.lower() == "csv":
-                return df.to_csv(index=False)
-            elif format.lower() == "json":
-                return df.to_json(orient="records", indent=2)
-            elif format.lower() == "markdown":
-                return df.to_markdown(index=False)
-            else:
-                return f"Error: Unsupported format '{format}'. Use csv, json, or markdown."
-                
+            messages = []
+            for update in updates:
+                row = update.get('row')
+                column = update.get('column')
+                value = update.get('value')
+                if row is None or column is None:
+                    messages.append(f"Missing row/column in update: {update}")
+                    continue
+                if row >= len(df) or row < 0:
+                    messages.append(f"Row {row} out of bounds.")
+                    continue
+                if column not in df.columns:
+                    messages.append(f"Column '{column}' does not exist.")
+                    continue
+                df.iloc[row, df.columns.get_loc(column)] = value
+                messages.append(f"Cell [{row}, '{column}'] updated.")
+            # Prepare data for frontend
+            table_data = {
+                "columns": list(df.columns),
+                "data": df.to_dict(orient="records"),
+            }
+            payload = {
+                "table_id": table_id,
+                "table_data": table_data,
+                "operation_message": "Batch cell update: " + "; ".join(messages)
+            }
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.post("http://localhost:3000/api/table", json=payload, timeout=2.0)
+            except Exception:
+                pass
+            table_view = df.to_string(index=True, na_rep="")
+            return f"Batch update complete.\n" + "\n".join(messages) + f"\n\nCurrent table:\n{table_view}"
         except Exception as e:
-            return f"Error exporting table: {str(e)}"
-    
-    yield FunctionInfo.create(single_fn=_export_table)
+            return f"Error in batch update: {str(e)}"
+    yield FunctionInfo.create(single_fn=_populate_cells)
