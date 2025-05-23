@@ -16,6 +16,66 @@ interface TableState {
   operationMessage: string | null;
 }
 
+// Simple bar chart component using SVG
+function BarChart({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+  if (!columns || columns.length < 2 || !data || data.length === 0) return null;
+  // Use first column as x labels, second column as y values
+  const xKey = columns[0];
+  const yKey = columns[1];
+  // Parse y values as numbers, filter out non-numeric
+  const bars = data.map((row) => ({
+    x: String(row[xKey]),
+    y: Number(row[yKey]),
+  })).filter(bar => !isNaN(bar.y));
+  if (bars.length === 0) return null;
+  const maxY = Math.max(...bars.map(b => b.y));
+  const chartHeight = 200;
+  const chartWidth = Math.max(320, bars.length * 60);
+  const barWidth = Math.max(20, chartWidth / (bars.length * 1.5));
+  return (
+    <div className="w-full flex flex-col items-center my-8">
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Bar Chart ({xKey} vs {yKey})</h3>
+      <svg width={chartWidth} height={chartHeight} className="bg-gray-900 rounded shadow">
+        {bars.map((bar, i) => {
+          const barHeight = maxY > 0 ? (bar.y / maxY) * (chartHeight - 40) : 0;
+          return (
+            <g key={i}>
+              <rect
+                x={i * (barWidth + 10) + 30}
+                y={chartHeight - barHeight - 20}
+                width={barWidth}
+                height={barHeight}
+                fill="#3b82f6"
+                rx={4}
+              />
+              <text
+                x={i * (barWidth + 10) + 30 + barWidth / 2}
+                y={chartHeight - 5}
+                textAnchor="middle"
+                fontSize="12"
+                fill="#d1d5db"
+              >
+                {bar.x}
+              </text>
+              {/* <text
+                x={i * (barWidth + 10) + 30 + barWidth / 2}
+                y={chartHeight - barHeight - 28}
+                textAnchor="middle"
+                fontSize="12"
+                fill="#fbbf24"
+              >
+                {bar.y}
+              </text> */}
+            </g>
+          );
+        })}
+        {/* Y axis label */}
+        <text x={10} y={30} fontSize="12" fill="#d1d5db" textAnchor="start" transform={`rotate(-90 40,60)`}>{yKey}</text>
+      </svg>
+    </div>
+  );
+}
+
 export default function Home() {
   const [tableState, setTableState] = useState<TableState>({
     tableData: null,
@@ -135,78 +195,81 @@ export default function Home() {
         )}
 
         {tableState.tableData && progress && (
-          <div className="bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b border-gray-700">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="font-semibold text-gray-200">Table Progress</h2>
-                <span className="text-sm text-gray-400">Last updated: {formattedTime}</span>
+          <>
+            <div className="bg-gray-800 rounded-lg shadow overflow-hidden">
+              <div className="p-4 border-b border-gray-700">
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="font-semibold text-gray-200">Table Progress</h2>
+                  <span className="text-sm text-gray-400">Last updated: {formattedTime}</span>
+                </div>
+                
+                <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
+                  <div 
+                    className="bg-blue-500 h-4 rounded-full transition-all duration-500" 
+                    style={{ width: `${progress.percentage}%` }}
+                  ></div>
+                </div>
+                
+                <div className="flex justify-between text-sm text-gray-400">
+                  <span>{progress.filledCells} / {progress.totalCells} cells filled</span>
+                  <span>{progress.percentage}% complete</span>
+                </div>
               </div>
-              
-              <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
-                <div 
-                  className="bg-blue-500 h-4 rounded-full transition-all duration-500" 
-                  style={{ width: `${progress.percentage}%` }}
-                ></div>
-              </div>
-              
-              <div className="flex justify-between text-sm text-gray-400">
-                <span>{progress.filledCells} / {progress.totalCells} cells filled</span>
-                <span>{progress.percentage}% complete</span>
-              </div>
-            </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-700">
-                <thead className="bg-gray-900">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Row
-                    </th>
-                    {tableState.tableData?.columns.map((column, idx) => (
-                      <th 
-                        key={idx} 
-                        scope="col" 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
-                      >
-                        {column}
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-700">
+                  <thead className="bg-gray-900">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Row
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-gray-900 divide-y divide-gray-800">
-                  {tableState.tableData?.data.map((row, rowIdx) => (
-                    <tr key={rowIdx}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">
-                        {rowIdx}
-                      </td>
-                      {tableState.tableData?.columns.map((column, colIdx) => {
-                        const cellValueRaw = row[column];
-                        const cellValue = String(cellValueRaw ?? '');
-                        let isEmpty = false;
-                        try {
-                          isEmpty = cellValue.trim() === '';
-                        } catch (cellErr) {
-                          // eslint-disable-next-line no-console
-                          console.error(`Error in .trim() for cell at row ${rowIdx}, column '${column}':`, cellErr, cellValueRaw);
-                          isEmpty = false;
-                        }
-                        return (
-                          <td 
-                            key={colIdx} 
-                            className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${
-                              isEmpty ? 'bg-yellow-900 text-yellow-300 italic' : 'bg-blue-900 text-gray-100'
-                            }`}
-                          >
-                            {isEmpty ? '(empty)' : cellValue}
-                          </td>
-                        );
-                      })}
+                      {tableState.tableData?.columns.map((column, idx) => (
+                        <th 
+                          key={idx} 
+                          scope="col" 
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                        >
+                          {column}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-gray-900 divide-y divide-gray-800">
+                    {tableState.tableData?.data.map((row, rowIdx) => (
+                      <tr key={rowIdx}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">
+                          {rowIdx}
+                        </td>
+                        {tableState.tableData?.columns.map((column, colIdx) => {
+                          const cellValueRaw = row[column];
+                          const cellValue = String(cellValueRaw ?? '');
+                          let isEmpty = false;
+                          try {
+                            isEmpty = cellValue.trim() === '';
+                          } catch (cellErr) {
+                            // eslint-disable-next-line no-console
+                            console.error(`Error in .trim() for cell at row ${rowIdx}, column '${column}':`, cellErr, cellValueRaw);
+                            isEmpty = false;
+                          }
+                          return (
+                            <td 
+                              key={colIdx} 
+                              className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${
+                                isEmpty ? 'bg-yellow-900 text-yellow-300 italic' : 'bg-blue-900 text-gray-100'
+                              }`}
+                            >
+                              {isEmpty ? '(empty)' : cellValue}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+            <BarChart columns={tableState.tableData.columns} data={tableState.tableData.data} />
+          </>
         )}
       </main>
       
