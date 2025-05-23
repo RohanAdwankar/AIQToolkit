@@ -96,7 +96,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 flex flex-col p-4">
       <header className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">🔍 DeepScrape Live Table Viewer</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Data Agent Live Table Viewer</h1>
           <div className="flex items-center gap-2">
             <div className={`h-3 w-3 rounded-full ${
               tableState.status === "success" ? 'bg-green-500' : 
@@ -129,7 +129,7 @@ export default function Home() {
             <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-600">Waiting for table creation...</p>
             <p className="text-sm text-gray-500 mt-2">
-              The DeepScrape agent will create and populate a table here.
+              The data agent will create and populate a table here.
             </p>
           </div>
         )}
@@ -211,7 +211,7 @@ export default function Home() {
       </main>
       
       <footer className="mt-8 text-center text-sm text-gray-500">
-        <p>DeepScrape Table Visualization - Real-time agent workflow viewer</p>
+        <p>Data Agent Table Visualization - Real-time agent workflow viewer</p>
       </footer>
     </div>
   );
