@@ -73,12 +73,8 @@ export default function Home() {
       const totalCells = tableState.tableData.data.length * tableState.tableData.columns.length;
       const filledCells = tableState.tableData.data.reduce((count, row, rowIdx) => {
         return count + tableState.tableData!.columns.filter((col, colIdx) => {
-          const cellValue = row[col];
-          if (typeof cellValue !== 'string') {
-            // eslint-disable-next-line no-console
-            console.error(`Non-string cell value in progress calculation at row ${rowIdx}, column '${col}':`, cellValue);
-          }
-          return typeof cellValue === 'string' && cellValue.trim() !== "";
+          const cellValue = String(row[col] ?? '');
+          return cellValue.trim() !== "";
         }).length;
       }, 0);
       const emptyCells = totalCells - filledCells;
@@ -184,17 +180,14 @@ export default function Home() {
                         {rowIdx}
                       </td>
                       {tableState.tableData?.columns.map((column, colIdx) => {
-                        const cellValue = row[column] || '';
+                        const cellValueRaw = row[column];
+                        const cellValue = String(cellValueRaw ?? '');
                         let isEmpty = false;
                         try {
-                          if (typeof cellValue !== 'string') {
-                            // eslint-disable-next-line no-console
-                            console.error(`Non-string cell value in table render at row ${rowIdx}, column '${column}':`, cellValue);
-                          }
-                          isEmpty = typeof cellValue === 'string' ? cellValue.trim() === '' : false;
+                          isEmpty = cellValue.trim() === '';
                         } catch (cellErr) {
                           // eslint-disable-next-line no-console
-                          console.error(`Error in .trim() for cell at row ${rowIdx}, column '${column}':`, cellErr, cellValue);
+                          console.error(`Error in .trim() for cell at row ${rowIdx}, column '${column}':`, cellErr, cellValueRaw);
                           isEmpty = false;
                         }
                         return (
