@@ -12,6 +12,7 @@ from pydantic import Field
 import asyncio
 import pandas as pd
 from typing import Optional, Dict, Any
+import httpx
 
 # Global table storage
 _table_storage = {}
@@ -55,6 +56,22 @@ async def create_table(config: CreateTableConfig, builder: Builder):
             
             _table_storage[table_id] = df
             
+            # Prepare data for frontend
+            table_data = {
+                "columns": list(df.columns),
+                "data": df.to_dict(orient="records"),
+            }
+            payload = {
+                "table_id": table_id,
+                "table_data": table_data,
+                "operation_message": f"Table '{table_id}' created with {rows} rows and {len(columns)} columns."
+            }
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.post("http://localhost:3000/api/table", json=payload, timeout=2.0)
+            except Exception as e:
+                pass  # Don't fail the tool if the UI is down
+            
             # Return formatted table view
             table_view = df.to_string(index=True, na_rep="")
             return f"Table '{table_id}' created successfully with {rows} rows and {len(columns)} columns.\n\nCurrent table:\n{table_view}"
@@ -95,6 +112,22 @@ async def populate_cell(config: PopulateCellConfig, builder: Builder):
             
             # Update the cell
             df.iloc[row, df.columns.get_loc(column)] = value
+            
+            # Prepare data for frontend
+            table_data = {
+                "columns": list(df.columns),
+                "data": df.to_dict(orient="records"),
+            }
+            payload = {
+                "table_id": table_id,
+                "table_data": table_data,
+                "operation_message": f"Cell [{row}, '{column}'] updated with value: '{value}'"
+            }
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.post("http://localhost:3000/api/table", json=payload, timeout=2.0)
+            except Exception as e:
+                pass  # Don't fail the tool if the UI is down
             
             # Return updated table view
             table_view = df.to_string(index=True, na_rep="")
