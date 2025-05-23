@@ -61,7 +61,7 @@ async def add_rows(config: AddRowsConfig, builder: Builder):
     async def _add_rows(rows: list, table_id: str = "main_table") -> str:
         try:
             df = _table_storage.get(table_id, pd.DataFrame())
-            if df.empty or len(df.columns) == 0:
+            if len(df.columns) == 0:
                 return "Error: Add columns first before adding rows."
             if not isinstance(rows, list) or not all(isinstance(r, list) for r in rows):
                 return "Error: rows must be an array of arrays."
