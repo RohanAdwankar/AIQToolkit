@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Connect to the Python backend and stream the response
-  const backendResp = await fetch('http://localhost:8000/generate/full?filter_steps=LLM_NEW_TOKEN', {
+  const backendResp = await fetch('http://localhost:8000/generate/full', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ input_message }),

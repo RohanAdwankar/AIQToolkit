@@ -291,16 +291,50 @@ export default function Home() {
           buffer += decoder.decode(value, { stream: true });
           // Parse SSE events (split on double newlines)
           const events = buffer.split(/\n\n/);
-          // Keep the last partial event in buffer
           buffer = events.pop() || "";
           for (const event of events) {
             if (event.startsWith("data: ")) {
-              // Remove 'data: ' from each line, join lines
               const lines = event.split(/\n/).map(l => l.replace(/^data: /, ""));
               const text = lines.join("\n").trim();
-              if (text) {
-                newThoughts = [...newThoughts, text];
-                setThoughts([...newThoughts]);
+              // Only process lines that start with 'intermediate_data:'
+              if (text.startsWith("intermediate_data:")) {
+                const jsonStr = text.slice("intermediate_data:".length).trim();
+                try {
+                  const dataObj = JSON.parse(jsonStr);
+                  // Try to extract the output string from the payload
+                  let payload = dataObj.payload;
+                  if (typeof payload === 'string') {
+                    payload = JSON.parse(payload);
+                  }
+                  const output = payload?.data?.output;
+                  if (typeof output === 'string') {
+                    // Extract Thought and Action lines
+                    const thoughtMatch = output.match(/Thought:([^\n]*)/);
+                    const actionMatch = output.match(/Action:([^\n]*)/);
+                    let display = [];
+                    if (thoughtMatch && thoughtMatch[1].trim()) {
+                      display.push(`Agent Thought: ${thoughtMatch[1].trim()}`);
+                    }
+                    if (actionMatch && actionMatch[1].trim()) {
+                      display.push(`Agent Action: ${actionMatch[1].trim()}`);
+                    }
+                    if (display.length > 0) {
+                      newThoughts = [...newThoughts, display.join("\n")];
+                      setThoughts([...newThoughts]);
+                    }
+                  } else {
+                    // Not a valid output string, log and skip
+                    // eslint-disable-next-line no-console
+                    console.log('[STREAM] Skipped output (no valid output string):', output);
+                  }
+                } catch (err) {
+                  // eslint-disable-next-line no-console
+                  console.log('[STREAM] Failed to parse intermediate_data JSON:', err, jsonStr);
+                }
+              } else {
+                // Not intermediate_data, log and skip
+                // eslint-disable-next-line no-console
+                console.log('[STREAM] Skipped non-intermediate_data chunk:', text);
               }
             } else if (event.startsWith("event: error")) {
               setThoughts([`Error: ${event}`]);
@@ -312,15 +346,7 @@ export default function Home() {
           }
         }
       }
-      // Flush any remaining buffer
-      if (buffer.trim()) {
-        const lines = buffer.split(/\n/).map(l => l.replace(/^data: /, ""));
-        const text = lines.join("\n").trim();
-        if (text) {
-          newThoughts = [...newThoughts, text];
-          setThoughts([...newThoughts]);
-        }
-      }
+      // No need to flush buffer, as partial events are not shown
     } catch (err) {
       console.error('[FRONTEND] Error in handleSubmit:', err);
       setThoughts(["Failed to contact backend server."]);
