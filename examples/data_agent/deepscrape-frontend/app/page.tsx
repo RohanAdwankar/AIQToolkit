@@ -86,7 +86,7 @@ export default function Home() {
   });
   const [userInput, setUserInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<string|null>(null);
+  const [submissionResult, setSubmissionResult] = useState<string | null>(null);
 
   // Poll the backend API for table updates every 2 seconds
   useEffect(() => {
@@ -188,10 +188,9 @@ export default function Home() {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-100">Data Agent Live Table Viewer</h1>
           <div className="flex items-center gap-2">
-            <div className={`h-3 w-3 rounded-full ${
-              tableState.status === "success" ? 'bg-green-400' : 
+            <div className={`h-3 w-3 rounded-full ${tableState.status === "success" ? 'bg-green-400' :
               tableState.status === "error" ? 'bg-red-500' : 'bg-yellow-400'
-            }`}></div>
+              }`}></div>
             <span className="text-sm text-gray-300 capitalize">
               {tableState.status}
             </span>
@@ -219,11 +218,6 @@ export default function Home() {
             {isSubmitting ? "Submitting..." : "Submit"}
           </button>
         </form>
-        {submissionResult && (
-          <div className="mb-4 text-center text-sm text-blue-300">
-            {submissionResult}
-          </div>
-        )}
 
         {tableState.error && (
           <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4" role="alert">
@@ -257,14 +251,14 @@ export default function Home() {
                   <h2 className="font-semibold text-gray-200">Table Progress</h2>
                   <span className="text-sm text-gray-400">Last updated: {formattedTime}</span>
                 </div>
-                
+
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
-                  <div 
-                    className="bg-blue-500 h-4 rounded-full transition-all duration-500" 
+                  <div
+                    className="bg-blue-500 h-4 rounded-full transition-all duration-500"
                     style={{ width: `${progress.percentage}%` }}
                   ></div>
                 </div>
-                
+
                 <div className="flex justify-between text-sm text-gray-400">
                   <span>{progress.filledCells} / {progress.totalCells} cells filled</span>
                   <span>{progress.percentage}% complete</span>
@@ -279,9 +273,9 @@ export default function Home() {
                         Row
                       </th>
                       {tableState.tableData?.columns.map((column, idx) => (
-                        <th 
-                          key={idx} 
-                          scope="col" 
+                        <th
+                          key={idx}
+                          scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
                         >
                           {column}
@@ -307,11 +301,10 @@ export default function Home() {
                             isEmpty = false;
                           }
                           return (
-                            <td 
-                              key={colIdx} 
-                              className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${
-                                isEmpty ? 'bg-yellow-900 text-yellow-300 italic' : 'bg-blue-900 text-gray-100'
-                              }`}
+                            <td
+                              key={colIdx}
+                              className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${isEmpty ? 'bg-yellow-900 text-yellow-300 italic' : 'bg-blue-900 text-gray-100'
+                                }`}
                             >
                               {isEmpty ? '(empty)' : cellValue}
                             </td>
@@ -327,7 +320,7 @@ export default function Home() {
           </>
         )}
       </main>
-      
+
       <footer className="mt-8 text-center text-sm text-gray-500">
         <p>Data Agent Table Visualization - Real-time agent workflow viewer</p>
       </footer>
