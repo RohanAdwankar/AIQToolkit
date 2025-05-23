@@ -273,16 +273,19 @@ export default function Home() {
         body: JSON.stringify({ input_message: userInput }),
       });
       const data = await resp.json();
+      console.log('[FRONTEND] /api/ask response:', data);
       // DEBUG: Show the raw output in the sidebar for now
       if (data.raw) {
-        // Split the raw output into lines for easier viewing
-        setThoughts(data.raw.split(/\n|(?=intermediate_data: )/g).filter(Boolean));
+        const split = data.raw.split(/\n|(?=intermediate_data: )/g).filter(Boolean);
+        console.log('[FRONTEND] Split thoughts:', split);
+        setThoughts(split);
       } else if (data.error) {
         setThoughts([`Error: ${data.error}\n${data.details || ''}`]);
       } else {
         setThoughts(["No output received from backend."]);
       }
     } catch (err) {
+      console.error('[FRONTEND] Error in handleSubmit:', err);
       setThoughts(["Failed to contact backend server."]);
     }
     setIsSubmitting(false);

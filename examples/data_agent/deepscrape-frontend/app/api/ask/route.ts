@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       console.error('No reader available for response body.');
     }
     // Instead of parsing, just return all the raw data for now
+    console.log('Returning result to frontend. Length:', result.length, 'First 500 chars:', result.slice(0, 500));
     return NextResponse.json({ raw: result });
   } catch (err) {
     console.error('Error in /api/ask route:', err);
