@@ -74,13 +74,22 @@ async def add_columns(config: AddColumnsConfig, builder: Builder):
 @register_function(config_type=AddRowsConfig)
 async def add_rows(config: AddRowsConfig, builder: Builder):
     """Add rows to the table. Accepts an array of arrays, each subarray must match the number of columns."""
+    import json
     async def _add_rows(rows: list, table_id: str = "main_table") -> str:
         try:
             df = _table_storage.get(table_id, pd.DataFrame())
             if len(df.columns) == 0:
                 return "Error: Add columns first before adding rows."
+            # Defensive: If rows is a string, try to parse as JSON
+            if isinstance(rows, str):
+                try:
+                    rows = json.loads(rows)
+                except Exception:
+                    return ("Error: 'rows' was provided as a string but could not be parsed as JSON. "
+                            "Please provide 'rows' as a native array of arrays, e.g., [[2020, 331449281], ...], not as a string.")
             if not isinstance(rows, list) or not all(isinstance(r, list) for r in rows):
-                return "Error: rows must be an array of arrays."
+                return ("Error: 'rows' must be an array of arrays, not a string or other type. "
+                        "Example: [[2020, 331449281], [2019, 328239523]]")
             n_cols = len(df.columns)
             valid_rows = [r for r in rows if len(r) == n_cols]
             invalid_rows = [r for r in rows if len(r) != n_cols]

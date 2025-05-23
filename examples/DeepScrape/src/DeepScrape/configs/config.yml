@@ -59,6 +59,9 @@ workflow:
 
     IMPORTANT: The table structure is fixed after columns are set. Do not create multiple tables. Only update the existing table.
 
+    CRITICAL: When calling a tool, always provide the tool input as a native Python/JSON dictionary (not as a string or stringified JSON). For example, use {{"rows": [[2020, 331449281], ...]}}, not '{{"rows": [[2020, 331449281], ...]}}'.
+    If you are unsure, always use the native Python/JSON structure, not a string.
+
     {tools}
     Use the following format:
     Question: the input question you must answer
