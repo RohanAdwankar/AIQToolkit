@@ -266,6 +266,7 @@ export default function Home() {
     setSubmissionResult(null);
     setIsStreaming(true);
     setThoughts([]);
+    const seenLinks = new Set<string>();
     try {
       const resp = await fetch("/api/ask", {
         method: "POST",
@@ -306,9 +307,24 @@ export default function Home() {
                   if (typeof payload === 'string') {
                     payload = JSON.parse(payload);
                   }
+                  // 1. Extract and display links from payload.data.input
+                  const inputStr = payload?.data?.input;
+                  if (typeof inputStr === 'string') {
+                    // Match all <Document href="..."/> tags
+                    const docHrefRegex = /<Document href=\\?"([^"]+)\\?"\/?>(?:\\n)?/g;
+                    let match;
+                    while ((match = docHrefRegex.exec(inputStr)) !== null) {
+                      const url = match[1];
+                      if (!seenLinks.has(url)) {
+                        seenLinks.add(url);
+                        newThoughts = [...newThoughts, `Agent Read ${url}`];
+                        setThoughts([...newThoughts]);
+                      }
+                    }
+                  }
+                  // 2. Extract Thought and Action lines from payload.data.output
                   const output = payload?.data?.output;
                   if (typeof output === 'string') {
-                    // Extract Thought and Action lines
                     const thoughtMatch = output.match(/Thought:([^\n]*)/);
                     const actionMatch = output.match(/Action:([^\n]*)/);
                     let display = [];
