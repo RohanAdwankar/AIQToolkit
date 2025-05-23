@@ -1,6 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import {
+  BarChart as ReBarChart, Bar, Rectangle, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart as ReLineChart, Line,
+  ScatterChart as ReScatterChart, Scatter,
+  PieChart as RePieChart, Pie, Sector,
+} from 'recharts';
 
 // Define interfaces for our data types
 interface TableData {
@@ -35,280 +41,104 @@ function getColumnTypes(data: Record<string, string>[], columns: string[]) {
   return { stringColumns, numericColumns };
 }
 
-// Simple bar chart component using SVG
-function BarChart({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
-  console.log('BarChart props:', { columns, data });
-  if (!columns || columns.length < 2 || !data || data.length === 0) {
-    console.warn('BarChart: Not enough columns or data');
-    return null;
-  }
-  const { stringColumns, numericColumns } = getColumnTypes(data, columns);
-  if (stringColumns.length === 0 || numericColumns.length === 0) {
-    console.warn('BarChart: No suitable string/numeric columns', { stringColumns, numericColumns });
-    return null;
-  }
-  const xKey = stringColumns[0];
-  const yKey = numericColumns[0];
-  // Parse y values as numbers, filter out non-numeric
-  const bars = data.map((row) => ({
-    x: String(row[xKey]),
-    y: Number(row[yKey]),
-  })).filter(bar => !isNaN(bar.y));
-  if (bars.length === 0) {
-    console.warn('BarChart: No valid bars after filtering', bars);
-    return null;
-  }
-  const maxY = Math.max(...bars.map(b => b.y));
-  const chartHeight = 200;
-  const chartWidth = Math.max(800, bars.length * 60);
-  const barGap = 10; // increased gap
-  const barWidth = Math.max(20, (chartWidth - (bars.length - 1) * barGap) / bars.length);
-  return (
-    <div className="w-full flex flex-col items-center my-8">
-      <h3 className="text-gray-200 text-lg font-semibold mb-2">Bar Chart ({xKey} vs {yKey})</h3>
-      <svg width={chartWidth} height={chartHeight} className="bg-gray-900 rounded shadow">
-        {bars.map((bar, i) => {
-          const barHeight = maxY > 0 ? (bar.y / maxY) * (chartHeight - 40) : 0;
-          return (
-            <g key={i}>
-              <rect
-                x={i * (barWidth + barGap) + 30}
-                y={chartHeight - barHeight - 20}
-                width={barWidth}
-                height={barHeight}
-                fill="#3b82f6"
-                rx={4}
-              />
-              <text
-                x={i * (barWidth + barGap) + 30 + barWidth / 2}
-                y={chartHeight - 5}
-                textAnchor="middle"
-                fontSize="12"
-                fill="#d1d5db"
-              >
-                {bar.x}
-              </text>
-            </g>
-          );
-        })}
-        {/* Y axis label */}
-        <text x={10} y={30} fontSize="12" fill="#d1d5db" textAnchor="start" transform={`rotate(-90 40,60)`}>{yKey}</text>
-      </svg>
-    </div>
-  );
-}
-
-// Pie chart component using SVG
-function PieChart({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
-  console.log('PieChart props:', { columns, data });
-  if (!columns || columns.length < 2 || !data || data.length === 0) {
-    console.warn('PieChart: Not enough columns or data');
-    return null;
-  }
-  const { stringColumns, numericColumns } = getColumnTypes(data, columns);
-  if (stringColumns.length === 0 || numericColumns.length === 0) {
-    console.warn('PieChart: No suitable string/numeric columns', { stringColumns, numericColumns });
-    return null;
-  }
-  const labelKey = stringColumns[0];
-  const valueKey = numericColumns[0];
-  const values = data.map(row => ({
-    label: String(row[labelKey]),
-    value: Number(row[valueKey]),
-  })).filter(d => !isNaN(d.value) && d.value > 0);
-  if (values.length === 0) {
-    console.warn('PieChart: No valid values after filtering', values);
-    return null;
-  }
-  const total = values.reduce((sum, d) => sum + d.value, 0);
-  const radius = 100;
-  const cx = 150, cy = 120;
-  let cumulative = 0;
-  const colors = ["#3b82f6", "#f59e42", "#10b981", "#f43f5e", "#a78bfa", "#fbbf24", "#6366f1", "#14b8a6", "#eab308", "#ef4444"];
-  function describeArc(x: number, y: number, radius: number, startAngle: number, endAngle: number) {
-    const start = {
-      x: x + radius * Math.cos((Math.PI / 180) * startAngle),
-      y: y + radius * Math.sin((Math.PI / 180) * startAngle),
-    };
-    const end = {
-      x: x + radius * Math.cos((Math.PI / 180) * endAngle),
-      y: y + radius * Math.sin((Math.PI / 180) * endAngle),
-    };
-    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-    return [
-      `M ${x} ${y}`,
-      `L ${start.x} ${start.y}`,
-      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`,
-      "Z",
-    ].join(" ");
-  }
-  let startAngle = 0;
-  const slices = values.map((d, i) => {
-    const angle = (d.value / total) * 360;
-    const endAngle = startAngle + angle;
-    const path = describeArc(cx, cy, radius, startAngle, endAngle);
-    const midAngle = startAngle + angle / 2;
-    const labelX = cx + (radius + 30) * Math.cos((Math.PI / 180) * midAngle);
-    const labelY = cy + (radius + 30) * Math.sin((Math.PI / 180) * midAngle);
-    const color = colors[i % colors.length];
-    const slice = { path, color, label: d.label, value: d.value, labelX, labelY };
-    startAngle = endAngle;
-    return slice;
+// Helper to convert table data to recharts format
+function getRechartsData(data: Record<string, string>[], columns: string[]) {
+  // Returns array of objects with keys as columns, values as parsed numbers or strings
+  return data.map(row => {
+    const obj: Record<string, any> = {};
+    columns.forEach(col => {
+      const val = row[col];
+      const num = Number(val);
+      obj[col] = isNaN(num) || val === '' ? val : num;
+    });
+    return obj;
   });
-  return (
-    <div className="w-full flex flex-col items-center my-8">
-      <h3 className="text-gray-200 text-lg font-semibold mb-2">Pie Chart ({labelKey} breakdown)</h3>
-      <svg width={340} height={260} className="bg-gray-900 rounded shadow">
-        {slices.map((slice, i) => (
-          <g key={i}>
-            <path d={slice.path} fill={slice.color} stroke="#222" strokeWidth={1} />
-            <text x={slice.labelX} y={slice.labelY} fontSize="12" fill="#d1d5db" textAnchor="middle">
-              {slice.label}
-            </text>
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
 }
 
-// Broken Y Axis Bar Chart (shows bars with a break if value is much higher than others)
-function BrokenYAxisBarChart({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
-  console.log('BrokenYAxisBarChart props:', { columns, data });
-  if (!columns || columns.length < 2 || !data || data.length === 0) {
-    console.warn('BrokenYAxisBarChart: Not enough columns or data');
-    return null;
-  }
+function BarChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
   const { stringColumns, numericColumns } = getColumnTypes(data, columns);
-  if (stringColumns.length === 0 || numericColumns.length === 0) {
-    console.warn('BrokenYAxisBarChart: No suitable string/numeric columns', { stringColumns, numericColumns });
-    return null;
-  }
+  if (stringColumns.length === 0 || numericColumns.length === 0) return null;
   const xKey = stringColumns[0];
   const yKey = numericColumns[0];
-  const bars = data.map((row) => ({
-    x: String(row[xKey]),
-    y: Number(row[yKey]),
-  })).filter(bar => !isNaN(bar.y));
-  if (bars.length === 0) {
-    console.warn('BrokenYAxisBarChart: No valid bars after filtering', bars);
-    return null;
-  }
-  // Find outliers (e.g., 2x the median)
-  const ys = bars.map(b => b.y).sort((a, b) => a - b);
-  const median = ys[Math.floor(ys.length / 2)];
-  const threshold = median * 2;
-  const chartHeight = 200;
-  const chartWidth = Math.max(600, bars.length * 60);
-  const barWidth = Math.max(20, chartWidth / (bars.length * 1.5));
-  const maxY = Math.max(...bars.map(b => b.y));
-  const breakHeight = 30;
+  const chartData = getRechartsData(data, columns);
   return (
-    <div className="w-full flex flex-col items-center my-8">
-      <h3 className="text-gray-200 text-lg font-semibold mb-2">Broken Y Axis Bar Chart ({xKey} vs {yKey})</h3>
-      <svg width={chartWidth} height={chartHeight + breakHeight} className="bg-gray-900 rounded shadow">
-        {bars.map((bar, i) => {
-          let barHeight = 0;
-          let yOffset = 0;
-          if (bar.y > threshold) {
-            barHeight = ((threshold / maxY) * (chartHeight - 40)) + breakHeight;
-            yOffset = breakHeight;
-          } else {
-            barHeight = (bar.y / maxY) * (chartHeight - 40);
-            yOffset = 0;
-          }
-          return (
-            <g key={i}>
-              <rect
-                x={i * (barWidth + 10) + 30}
-                y={chartHeight - barHeight - 20 + yOffset}
-                width={barWidth}
-                height={barHeight}
-                fill="#f59e42"
-                rx={4}
-              />
-              <text
-                x={i * (barWidth + 10) + 30 + barWidth / 2}
-                y={chartHeight + breakHeight - 5}
-                textAnchor="middle"
-                fontSize="12"
-                fill="#d1d5db"
-              >
-                {bar.x}
-              </text>
-              {bar.y > threshold && (
-                <text
-                  x={i * (barWidth + 10) + 30 + barWidth / 2}
-                  y={chartHeight - barHeight - 28 + yOffset}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fill="#fbbf24"
-                >
-                  {bar.y}
-                </text>
-              )}
-            </g>
-          );
-        })}
-        {/* Y axis label */}
-        <text x={10} y={30} fontSize="12" fill="#d1d5db" textAnchor="start" transform={`rotate(-90 40,60)`}>{yKey}</text>
-        {/* Break indicator */}
-        <rect x={20} y={chartHeight - 20} width={chartWidth - 40} height={breakHeight} fill="#222" opacity={0.2} />
-      </svg>
+    <div className="w-full h-[400px] flex flex-col items-center my-8">
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Bar Chart ({xKey} vs {yKey})</h3>
+      <ResponsiveContainer width="100%" height="90%">
+        <ReBarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey={xKey} angle={-20} textAnchor="end" interval={0} height={60} />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey={yKey} fill="#3b82f6" activeBar={<Rectangle fill="pink" stroke="blue" />} />
+        </ReBarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
-// Scatter plot component using SVG
-function ScatterPlot({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
-  console.log('ScatterPlot props:', { columns, data });
-  if (!columns || columns.length < 2 || !data || data.length === 0) {
-    console.warn('ScatterPlot: Not enough columns or data');
-    return null;
-  }
+function LineChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+  const { stringColumns, numericColumns } = getColumnTypes(data, columns);
+  if (stringColumns.length === 0 || numericColumns.length < 2) return null;
+  const xKey = stringColumns[0];
+  const yKey1 = numericColumns[0];
+  const yKey2 = numericColumns[1] || numericColumns[0];
+  const chartData = getRechartsData(data, columns);
+  return (
+    <div className="w-full h-[400px] flex flex-col items-center my-8">
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Line Chart ({xKey} vs {yKey1}, {yKey2})</h3>
+      <ResponsiveContainer width="100%" height="90%">
+        <ReLineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey={xKey} angle={-20} textAnchor="end" interval={0} height={60} />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Line type="monotone" dataKey={yKey1} stroke="#8884d8" activeDot={{ r: 8 }} />
+          {yKey2 !== yKey1 && <Line type="monotone" dataKey={yKey2} stroke="#82ca9d" />}
+        </ReLineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function ScatterChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
   const { numericColumns } = getColumnTypes(data, columns);
-  if (numericColumns.length < 2) {
-    console.warn('ScatterPlot: Not enough numeric columns', { numericColumns });
-    return null;
-  }
+  if (numericColumns.length < 2) return null;
   const xKey = numericColumns[0];
   const yKey = numericColumns[1];
-  const points = data.map(row => ({
-    x: Number(row[xKey]),
-    y: Number(row[yKey]),
-  })).filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
-  if (points.length === 0) {
-    console.warn('ScatterPlot: No valid points after filtering', points);
-    return null;
-  }
-  const chartWidth = 340;
-  const chartHeight = 220;
-  const padding = 40;
-  const minX = Math.min(...points.map(p => p.x));
-  const maxX = Math.max(...points.map(p => p.x));
-  const minY = Math.min(...points.map(p => p.y));
-  const maxY = Math.max(...points.map(p => p.y));
-  function scaleX(x: number) {
-    return padding + ((x - minX) / (maxX - minX || 1)) * (chartWidth - 2 * padding);
-  }
-  function scaleY(y: number) {
-    return chartHeight - padding - ((y - minY) / (maxY - minY || 1)) * (chartHeight - 2 * padding);
-  }
+  const chartData = getRechartsData(data, columns);
   return (
-    <div className="w-full flex flex-col items-center my-8">
+    <div className="w-full h-[400px] flex flex-col items-center my-8">
       <h3 className="text-gray-200 text-lg font-semibold mb-2">Scatter Plot ({xKey} vs {yKey})</h3>
-      <svg width={chartWidth} height={chartHeight} className="bg-gray-900 rounded shadow">
-        {/* Axes */}
-        <line x1={padding} y1={chartHeight - padding} x2={chartWidth - padding} y2={chartHeight - padding} stroke="#d1d5db" strokeWidth={2} />
-        <line x1={padding} y1={padding} x2={padding} y2={chartHeight - padding} stroke="#d1d5db" strokeWidth={2} />
-        {/* Points */}
-        {points.map((pt, i) => (
-          <circle key={i} cx={scaleX(pt.x)} cy={scaleY(pt.y)} r={7} fill="#a78bfa" opacity={0.8} />
-        ))}
-        {/* X/Y axis labels */}
-        <text x={chartWidth / 2} y={chartHeight - 10} textAnchor="middle" fontSize="13" fill="#d1d5db">{xKey}</text>
-        <text x={20} y={chartHeight / 2} textAnchor="middle" fontSize="13" fill="#d1d5db" transform={`rotate(-90 20,${chartHeight / 2})`}>{yKey}</text>
-      </svg>
+      <ResponsiveContainer width="100%" height="90%">
+        <ReScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+          <CartesianGrid />
+          <XAxis type="number" dataKey={xKey} name={xKey} />
+          <YAxis type="number" dataKey={yKey} name={yKey} />
+          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+          <Scatter name="Data" data={chartData} fill="#a78bfa" />
+        </ReScatterChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function PieChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+  const { stringColumns, numericColumns } = getColumnTypes(data, columns);
+  if (stringColumns.length === 0 || numericColumns.length === 0) return null;
+  const nameKey = stringColumns[0];
+  const valueKey = numericColumns[0];
+  const chartData = getRechartsData(data, columns);
+  return (
+    <div className="w-full h-[400px] flex flex-col items-center my-8">
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Pie Chart ({nameKey} breakdown)</h3>
+      <ResponsiveContainer width="100%" height="90%">
+        <RePieChart>
+          <Pie data={chartData} dataKey={valueKey} nameKey={nameKey} cx="50%" cy="50%" outerRadius={120} fill="#8884d8" label />
+        </RePieChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -320,8 +150,6 @@ function ChartCarousel({ charts }: { charts: { name: string; element: React.Reac
   if (n === 0) return null;
   const goLeft = () => setIdx(i => (i - 1 + n) % n);
   const goRight = () => setIdx(i => (i + 1) % n);
-  // Debug: log which chart is being rendered and its element
-  console.log('ChartCarousel: rendering', charts[idx].name, charts[idx].element);
   return (
     <div className="w-full flex flex-col items-center my-8">
       <div className="flex items-center gap-7 mb-2">
@@ -338,8 +166,7 @@ function ChartCarousel({ charts }: { charts: { name: string; element: React.Reac
         >&#8594;</button>
       </div>
       <div className="w-full flex justify-center">
-        {/* Debug: log chart element rendering */}
-        {(() => { console.log('Rendering chart element:', charts[idx].element); return charts[idx].element; })()}
+        {charts[idx].element}
       </div>
     </div>
   );
@@ -587,10 +414,10 @@ export default function Home() {
               </div>
               <ChartCarousel
                 charts={[
-                  { name: "Bar Chart", element: <BarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                  { name: "Pie Chart", element: <PieChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                  { name: "Broken Y Axis Bar Chart", element: <BrokenYAxisBarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                  { name: "Scatter Plot", element: <ScatterPlot columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Bar Chart", element: <BarChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Line Chart", element: <LineChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Pie Chart", element: <PieChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Scatter Plot", element: <ScatterChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
                 ]}
               />
             </>
