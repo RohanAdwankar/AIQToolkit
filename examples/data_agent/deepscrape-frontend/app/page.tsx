@@ -16,18 +16,48 @@ interface TableState {
   operationMessage: string | null;
 }
 
+// Helper to determine column types
+function getColumnTypes(data: Record<string, string>[], columns: string[]) {
+  // Returns { stringColumns: string[], numericColumns: string[] }
+  if (!data || data.length === 0) return { stringColumns: [], numericColumns: [] };
+  const stringColumns: string[] = [];
+  const numericColumns: string[] = [];
+  columns.forEach(col => {
+    // Check if at least half the values are numeric
+    const values = data.map(row => row[col]);
+    const numericCount = values.filter(v => !isNaN(Number(v)) && v !== null && v !== undefined && v !== '').length;
+    if (numericCount >= data.length / 2) {
+      numericColumns.push(col);
+    } else {
+      stringColumns.push(col);
+    }
+  });
+  return { stringColumns, numericColumns };
+}
+
 // Simple bar chart component using SVG
 function BarChart({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
-  if (!columns || columns.length < 2 || !data || data.length === 0) return null;
-  // Use first column as x labels, second column as y values
-  const xKey = columns[0];
-  const yKey = columns[1];
+  console.log('BarChart props:', { columns, data });
+  if (!columns || columns.length < 2 || !data || data.length === 0) {
+    console.warn('BarChart: Not enough columns or data');
+    return null;
+  }
+  const { stringColumns, numericColumns } = getColumnTypes(data, columns);
+  if (stringColumns.length === 0 || numericColumns.length === 0) {
+    console.warn('BarChart: No suitable string/numeric columns', { stringColumns, numericColumns });
+    return null;
+  }
+  const xKey = stringColumns[0];
+  const yKey = numericColumns[0];
   // Parse y values as numbers, filter out non-numeric
   const bars = data.map((row) => ({
     x: String(row[xKey]),
     y: Number(row[yKey]),
   })).filter(bar => !isNaN(bar.y));
-  if (bars.length === 0) return null;
+  if (bars.length === 0) {
+    console.warn('BarChart: No valid bars after filtering', bars);
+    return null;
+  }
   const maxY = Math.max(...bars.map(b => b.y));
   const chartHeight = 200;
   const chartWidth = Math.max(320, bars.length * 60);
@@ -57,21 +87,260 @@ function BarChart({ columns, data }: { columns: string[]; data: Record<string, s
               >
                 {bar.x}
               </text>
-              {/* <text
-                x={i * (barWidth + 10) + 30 + barWidth / 2}
-                y={chartHeight - barHeight - 28}
-                textAnchor="middle"
-                fontSize="12"
-                fill="#fbbf24"
-              >
-                {bar.y}
-              </text> */}
             </g>
           );
         })}
         {/* Y axis label */}
         <text x={10} y={30} fontSize="12" fill="#d1d5db" textAnchor="start" transform={`rotate(-90 40,60)`}>{yKey}</text>
       </svg>
+    </div>
+  );
+}
+
+// Pie chart component using SVG
+function PieChart({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+  console.log('PieChart props:', { columns, data });
+  if (!columns || columns.length < 2 || !data || data.length === 0) {
+    console.warn('PieChart: Not enough columns or data');
+    return null;
+  }
+  const { stringColumns, numericColumns } = getColumnTypes(data, columns);
+  if (stringColumns.length === 0 || numericColumns.length === 0) {
+    console.warn('PieChart: No suitable string/numeric columns', { stringColumns, numericColumns });
+    return null;
+  }
+  const labelKey = stringColumns[0];
+  const valueKey = numericColumns[0];
+  const values = data.map(row => ({
+    label: String(row[labelKey]),
+    value: Number(row[valueKey]),
+  })).filter(d => !isNaN(d.value) && d.value > 0);
+  if (values.length === 0) {
+    console.warn('PieChart: No valid values after filtering', values);
+    return null;
+  }
+  const total = values.reduce((sum, d) => sum + d.value, 0);
+  const radius = 100;
+  const cx = 150, cy = 120;
+  let cumulative = 0;
+  const colors = ["#3b82f6", "#f59e42", "#10b981", "#f43f5e", "#a78bfa", "#fbbf24", "#6366f1", "#14b8a6", "#eab308", "#ef4444"];
+  function describeArc(x: number, y: number, radius: number, startAngle: number, endAngle: number) {
+    const start = {
+      x: x + radius * Math.cos((Math.PI / 180) * startAngle),
+      y: y + radius * Math.sin((Math.PI / 180) * startAngle),
+    };
+    const end = {
+      x: x + radius * Math.cos((Math.PI / 180) * endAngle),
+      y: y + radius * Math.sin((Math.PI / 180) * endAngle),
+    };
+    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+    return [
+      `M ${x} ${y}`,
+      `L ${start.x} ${start.y}`,
+      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`,
+      "Z",
+    ].join(" ");
+  }
+  let startAngle = 0;
+  const slices = values.map((d, i) => {
+    const angle = (d.value / total) * 360;
+    const endAngle = startAngle + angle;
+    const path = describeArc(cx, cy, radius, startAngle, endAngle);
+    const midAngle = startAngle + angle / 2;
+    const labelX = cx + (radius + 30) * Math.cos((Math.PI / 180) * midAngle);
+    const labelY = cy + (radius + 30) * Math.sin((Math.PI / 180) * midAngle);
+    const color = colors[i % colors.length];
+    const slice = { path, color, label: d.label, value: d.value, labelX, labelY };
+    startAngle = endAngle;
+    return slice;
+  });
+  return (
+    <div className="w-full flex flex-col items-center my-8">
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Pie Chart ({labelKey} breakdown)</h3>
+      <svg width={340} height={260} className="bg-gray-900 rounded shadow">
+        {slices.map((slice, i) => (
+          <g key={i}>
+            <path d={slice.path} fill={slice.color} stroke="#222" strokeWidth={1} />
+            <text x={slice.labelX} y={slice.labelY} fontSize="12" fill="#d1d5db" textAnchor="middle">
+              {slice.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// Broken Y Axis Bar Chart (shows bars with a break if value is much higher than others)
+function BrokenYAxisBarChart({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+  console.log('BrokenYAxisBarChart props:', { columns, data });
+  if (!columns || columns.length < 2 || !data || data.length === 0) {
+    console.warn('BrokenYAxisBarChart: Not enough columns or data');
+    return null;
+  }
+  const { stringColumns, numericColumns } = getColumnTypes(data, columns);
+  if (stringColumns.length === 0 || numericColumns.length === 0) {
+    console.warn('BrokenYAxisBarChart: No suitable string/numeric columns', { stringColumns, numericColumns });
+    return null;
+  }
+  const xKey = stringColumns[0];
+  const yKey = numericColumns[0];
+  const bars = data.map((row) => ({
+    x: String(row[xKey]),
+    y: Number(row[yKey]),
+  })).filter(bar => !isNaN(bar.y));
+  if (bars.length === 0) {
+    console.warn('BrokenYAxisBarChart: No valid bars after filtering', bars);
+    return null;
+  }
+  // Find outliers (e.g., 2x the median)
+  const ys = bars.map(b => b.y).sort((a, b) => a - b);
+  const median = ys[Math.floor(ys.length / 2)];
+  const threshold = median * 2;
+  const chartHeight = 200;
+  const chartWidth = Math.max(320, bars.length * 60);
+  const barWidth = Math.max(20, chartWidth / (bars.length * 1.5));
+  const maxY = Math.max(...bars.map(b => b.y));
+  const breakHeight = 30;
+  return (
+    <div className="w-full flex flex-col items-center my-8">
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Broken Y Axis Bar Chart ({xKey} vs {yKey})</h3>
+      <svg width={chartWidth} height={chartHeight + breakHeight} className="bg-gray-900 rounded shadow">
+        {bars.map((bar, i) => {
+          let barHeight = 0;
+          let yOffset = 0;
+          if (bar.y > threshold) {
+            barHeight = ((threshold / maxY) * (chartHeight - 40)) + breakHeight;
+            yOffset = breakHeight;
+          } else {
+            barHeight = (bar.y / maxY) * (chartHeight - 40);
+            yOffset = 0;
+          }
+          return (
+            <g key={i}>
+              <rect
+                x={i * (barWidth + 10) + 30}
+                y={chartHeight - barHeight - 20 + yOffset}
+                width={barWidth}
+                height={barHeight}
+                fill="#f59e42"
+                rx={4}
+              />
+              <text
+                x={i * (barWidth + 10) + 30 + barWidth / 2}
+                y={chartHeight + breakHeight - 5}
+                textAnchor="middle"
+                fontSize="12"
+                fill="#d1d5db"
+              >
+                {bar.x}
+              </text>
+              {bar.y > threshold && (
+                <text
+                  x={i * (barWidth + 10) + 30 + barWidth / 2}
+                  y={chartHeight - barHeight - 28 + yOffset}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fill="#fbbf24"
+                >
+                  {bar.y}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {/* Y axis label */}
+        <text x={10} y={30} fontSize="12" fill="#d1d5db" textAnchor="start" transform={`rotate(-90 40,60)`}>{yKey}</text>
+        {/* Break indicator */}
+        <rect x={20} y={chartHeight - 20} width={chartWidth - 40} height={breakHeight} fill="#222" opacity={0.2} />
+        <text x={chartWidth / 2} y={chartHeight - 5 + breakHeight / 2} textAnchor="middle" fontSize="14" fill="#fbbf24">//</text>
+      </svg>
+    </div>
+  );
+}
+
+// Scatter plot component using SVG
+function ScatterPlot({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+  console.log('ScatterPlot props:', { columns, data });
+  if (!columns || columns.length < 2 || !data || data.length === 0) {
+    console.warn('ScatterPlot: Not enough columns or data');
+    return null;
+  }
+  const { numericColumns } = getColumnTypes(data, columns);
+  if (numericColumns.length < 2) {
+    console.warn('ScatterPlot: Not enough numeric columns', { numericColumns });
+    return null;
+  }
+  const xKey = numericColumns[0];
+  const yKey = numericColumns[1];
+  const points = data.map(row => ({
+    x: Number(row[xKey]),
+    y: Number(row[yKey]),
+  })).filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
+  if (points.length === 0) {
+    console.warn('ScatterPlot: No valid points after filtering', points);
+    return null;
+  }
+  const chartWidth = 340;
+  const chartHeight = 220;
+  const padding = 40;
+  const minX = Math.min(...points.map(p => p.x));
+  const maxX = Math.max(...points.map(p => p.x));
+  const minY = Math.min(...points.map(p => p.y));
+  const maxY = Math.max(...points.map(p => p.y));
+  function scaleX(x: number) {
+    return padding + ((x - minX) / (maxX - minX || 1)) * (chartWidth - 2 * padding);
+  }
+  function scaleY(y: number) {
+    return chartHeight - padding - ((y - minY) / (maxY - minY || 1)) * (chartHeight - 2 * padding);
+  }
+  return (
+    <div className="w-full flex flex-col items-center my-8">
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Scatter Plot ({xKey} vs {yKey})</h3>
+      <svg width={chartWidth} height={chartHeight} className="bg-gray-900 rounded shadow">
+        {/* Axes */}
+        <line x1={padding} y1={chartHeight - padding} x2={chartWidth - padding} y2={chartHeight - padding} stroke="#d1d5db" strokeWidth={2} />
+        <line x1={padding} y1={padding} x2={padding} y2={chartHeight - padding} stroke="#d1d5db" strokeWidth={2} />
+        {/* Points */}
+        {points.map((pt, i) => (
+          <circle key={i} cx={scaleX(pt.x)} cy={scaleY(pt.y)} r={7} fill="#a78bfa" opacity={0.8} />
+        ))}
+        {/* X/Y axis labels */}
+        <text x={chartWidth / 2} y={chartHeight - 10} textAnchor="middle" fontSize="13" fill="#d1d5db">{xKey}</text>
+        <text x={20} y={chartHeight / 2} textAnchor="middle" fontSize="13" fill="#d1d5db" transform={`rotate(-90 20,${chartHeight / 2})`}>{yKey}</text>
+      </svg>
+    </div>
+  );
+}
+
+// Carousel for charts
+function ChartCarousel({ charts }: { charts: { name: string; element: React.ReactNode }[] }) {
+  const [idx, setIdx] = useState(0);
+  const n = charts.length;
+  if (n === 0) return null;
+  const goLeft = () => setIdx(i => (i - 1 + n) % n);
+  const goRight = () => setIdx(i => (i + 1) % n);
+  // Debug: log which chart is being rendered and its element
+  console.log('ChartCarousel: rendering', charts[idx].name, charts[idx].element);
+  return (
+    <div className="w-full flex flex-col items-center my-8">
+      <div className="flex items-center gap-4 mb-2">
+        <button
+          onClick={goLeft}
+          className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-500 shadow"
+          aria-label="Previous chart"
+        >&#8592;</button>
+        <span className="text-gray-300 font-semibold text-lg">{charts[idx].name}</span>
+        <button
+          onClick={goRight}
+          className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-500 shadow"
+          aria-label="Next chart"
+        >&#8594;</button>
+      </div>
+      <div className="w-full flex justify-center">
+        {/* Debug: log chart element rendering */}
+        {(() => { console.log('Rendering chart element:', charts[idx].element); return charts[idx].element; })()}
+      </div>
     </div>
   );
 }
@@ -316,7 +585,14 @@ export default function Home() {
                 </table>
               </div>
             </div>
-            <BarChart columns={tableState.tableData.columns} data={tableState.tableData.data} />
+            <ChartCarousel
+              charts={[
+                { name: "Bar Chart", element: <BarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                { name: "Pie Chart", element: <PieChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                { name: "Broken Y Axis Bar Chart", element: <BrokenYAxisBarChart columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                { name: "Scatter Plot", element: <ScatterPlot columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+              ]}
+            />
           </>
         )}
       </main>
