@@ -55,6 +55,15 @@ function getRechartsData(data: Record<string, string>[], columns: string[]) {
   });
 }
 
+// Helper to convert table data to CSV
+function tableDataToCSV(tableData: TableData): string {
+  const { columns, data } = tableData;
+  const escape = (val: string) => '"' + String(val).replace(/"/g, '""') + '"';
+  const header = columns.map(escape).join(',');
+  const rows = data.map(row => columns.map(col => escape(row[col] ?? '')).join(','));
+  return [header, ...rows].join('\n');
+}
+
 function BarChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
   const { stringColumns, numericColumns } = getColumnTypes(data, columns);
   if (stringColumns.length === 0 || numericColumns.length === 0) return null;
@@ -404,6 +413,23 @@ export default function Home() {
     ? tableState.lastUpdate.toLocaleTimeString()
     : '';
 
+  // CSV export handler
+  const handleExportCSV = () => {
+    if (!tableState.tableData) return;
+    const csv = tableDataToCSV(tableState.tableData);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'table_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-row items-start p-4">
       {/* Sidebar for AI thoughts */}
@@ -486,6 +512,15 @@ export default function Home() {
 
           {tableState.tableData && progress && (
             <>
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={handleExportCSV}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded shadow disabled:opacity-50"
+                  disabled={!tableState.tableData}
+                >
+                  Export CSV
+                </button>
+              </div>
               <div className="bg-gray-800 rounded-lg shadow overflow-hidden">
                 <div className="p-4 border-b border-gray-700">
                   <div className="flex justify-between items-center mb-2">
