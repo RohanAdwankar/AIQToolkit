@@ -1,5 +1,9 @@
 # Data Agent Workflow
 
+
+https://github.com/user-attachments/assets/abf9a5ad-b9b6-4482-af29-cf827cd16cb4
+
+
 > Fetches data from the internet and populates python dataframe.
 
 ## Motivation
