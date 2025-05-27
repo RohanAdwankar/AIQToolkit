@@ -432,10 +432,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-row items-start p-4">
-      {/* Sidebar for AI thoughts */}
-      <AIThoughtsPanel thoughts={thoughts} isStreaming={isStreaming} thoughtsEndRef={thoughtsEndRef} systemMessages={systemMessages} />
+      <aside className="sticky top-10 self-start h-[100vh] z-30">
+        <AIThoughtsPanel thoughts={thoughts} isStreaming={isStreaming} thoughtsEndRef={thoughtsEndRef} systemMessages={systemMessages} />
+      </aside>
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center" style={{ minHeight: '75vh', width: '75vw', maxWidth: 1200 }}>
+      <div className="flex-1 flex flex-col items-center overflow-y-auto" style={{ minHeight: '75vh', width: '75vw', maxWidth: 1200 }}>
         <header className="bg-gray-800 rounded-lg shadow p-4 mb-6 w-full">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-100">Data Agent Live Table Viewer</h1>
