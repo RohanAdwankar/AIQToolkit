@@ -20,6 +20,10 @@ Though they generate large volumes of text its difficult to then continue the an
 ## Installation
 1. [Build AIQ from source](https://github.com/NVIDIA/AIQToolkit/blob/develop/README.md) and cd into examples
 2. uv pip install -e data_agent
-3. aiq serve --config_file 'data_agent/configs/config.yml'
-4. cd deepscrape-frontend && npm run build && npm run start
-5. open http://localhost:3000/
+3. Export API Keys for Tavily and NIMs (export TAVILY_API_KEY=_ and export NVIDIA_API_KEY=_)
+4. aiq serve --config_file 'data_agent/configs/config.yml'
+5. cd deepscrape-frontend && npm run build && npm run start
+6. open http://localhost:3000/
+
+## Testing
+If you would like to test just the frontend without running the tookit, you can skip step 3, and instead of step 4 you can run `python utils/mock_agent.py` and then open the website like normal and enter a query to see a preprogrammed example of what the interface looks like.
