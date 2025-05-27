@@ -54,6 +54,15 @@ function renderThoughtText(text: string) {
 const AIThoughtsPanel: React.FC<AIThoughtsPanelProps> = ({ thoughts, isStreaming, thoughtsEndRef, systemMessages = [] }) => {
   // Store timestamps for each message, only set once per message
   const [timestamps, setTimestamps] = useState<string[]>([]);
+  type MessageType = 'agent' | 'error' | 'operation';
+  interface MessageLogEntry {
+    type: MessageType;
+    text: string;
+    timestamp: string;
+  }
+  const [messageLog, setMessageLog] = useState<MessageLogEntry[]>([]);
+
+  // Add agent thoughts to message log as they appear
   useEffect(() => {
     if (thoughts.length > timestamps.length) {
       const now = new Date();
@@ -68,33 +77,75 @@ const AIThoughtsPanel: React.FC<AIThoughtsPanelProps> = ({ thoughts, isStreaming
     }
   }, [thoughts.length]);
 
+  // Add new agent thoughts to message log
+  useEffect(() => {
+    setMessageLog(prev => {
+      const newMessages: MessageLogEntry[] = [];
+      for (let i = prev.filter(m => m.type === 'agent').length; i < thoughts.length; i++) {
+        newMessages.push({
+          type: 'agent',
+          text: thoughts[i],
+          timestamp: timestamps[i] || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        });
+      }
+      return [...prev, ...newMessages];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thoughts, timestamps]);
+
+  // Add new system messages to message log
+  useEffect(() => {
+    setMessageLog(prev => {
+      const existingSystem = prev.filter(m => m.type === 'error' || m.type === 'operation');
+      const newSystem: MessageLogEntry[] = (systemMessages || []).filter(
+        msg => !existingSystem.some(m => m.text === msg.text && m.timestamp === msg.timestamp && m.type === msg.type)
+      ).map(msg => ({
+        type: msg.type,
+        text: msg.text,
+        timestamp: msg.timestamp
+      }));
+      return [...prev, ...newSystem];
+    });
+  }, [systemMessages]);
+
+  // Sort all messages by timestamp (chronological order)
+  const sortedMessages = [...messageLog].sort((a, b) => {
+    // Try to parse as full ISO, fallback to today with time only
+    const parse = (ts: string) => {
+      const d = Date.parse(ts);
+      if (!isNaN(d)) return d;
+      // fallback: parse as today + time
+      return Date.parse(new Date().toISOString().slice(0, 10) + 'T' + ts);
+    };
+    return parse(a.timestamp) - parse(b.timestamp);
+  });
+
   return (
-    <aside className="w-1/4 min-w-[280px] max-w-xs bg-gray-800 rounded-lg shadow-lg p-4 mr-6 h-[80vh] overflow-y-auto flex flex-col">
+    <aside className="w-1/3 min-w-[420px] max-w-lg bg-gray-800 rounded-lg shadow-lg p-4 mr-8 h-[92vh] overflow-y-auto flex flex-col">
       <h2 className="text-gray-100 text-xl font-bold mb-4">AI Thoughts</h2>
       <div className="flex-1 overflow-y-auto flex flex-col gap-2">
-        {thoughts.length === 0 && systemMessages.length === 0 && !isStreaming && (
+        {sortedMessages.length === 0 && !isStreaming && (
           <div className="text-gray-400 italic">No thoughts yet.</div>
         )}
-        {/* System messages (error/operation) */}
-        {systemMessages.map((msg, i) => (
-          <div key={`sys-${i}`} className="mb-1 flex flex-col items-end">
-            <div className={`rounded-2xl px-4 py-2 text-sm max-w-full shadow border font-semibold ${msg.type === 'error' ? 'bg-red-900 border-red-700 text-red-200' : 'bg-blue-900 border-blue-700 text-blue-200'}`}
-            >
-              {msg.type === 'error' ? 'Error: ' : 'Operation: '}
-              <span className="font-normal">{msg.text}</span>
+        {sortedMessages.map((msg, i) =>
+          msg.type === 'agent' ? (
+            <div key={`agent-${i}`} className="mb-1 flex flex-col items-start">
+              <div className="bg-gray-700 rounded-2xl px-4 py-2 text-gray-200 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600">
+                {renderThoughtText(msg.text)}
+              </div>
+              <span className="text-xs text-gray-400 mt-1 ml-2">{msg.timestamp}</span>
             </div>
-            <span className="text-xs text-gray-400 mt-1 mr-2 text-right">{msg.timestamp}</span>
-          </div>
-        ))}
-        {/* Agent thoughts/messages */}
-        {thoughts.map((t, i) => (
-          <div key={i} className="mb-1 flex flex-col items-start">
-            <div className="bg-gray-700 rounded-2xl px-4 py-2 text-gray-200 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600">
-              {renderThoughtText(t)}
+          ) : (
+            <div key={`sys-${i}`} className="mb-1 flex flex-col items-end">
+              <div className={`rounded-2xl px-4 py-2 text-sm max-w-full shadow border font-semibold ${msg.type === 'error' ? 'bg-red-900 border-red-700 text-red-200' : 'bg-blue-900 border-blue-700 text-blue-200'}`}
+              >
+                {msg.type === 'error' ? 'Error: ' : 'Operation: '}
+                <span className="font-normal">{msg.text}</span>
+              </div>
+              <span className="text-xs text-gray-400 mt-1 mr-2 text-right">{msg.timestamp}</span>
             </div>
-            <span className="text-xs text-gray-400 mt-1 ml-2">{timestamps[i]}</span>
-          </div>
-        ))}
+          )
+        )}
         <div ref={thoughtsEndRef} />
       </div>
       {isStreaming && (
