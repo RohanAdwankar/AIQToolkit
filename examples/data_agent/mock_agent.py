@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 import asyncio
 import uvicorn
+import json
 
 app = FastAPI()
 
@@ -28,15 +29,43 @@ async def table_endpoint(payload: dict):
 
 async def ai_thoughts_stream():
     # Stream thoughts as SSE events, matching the frontend's expected format
+    def make_intermediate_data(input_str, output_str):
+        payload = {
+            "data": {
+                "input": input_str,
+                "output": output_str
+            }
+        }
+        # The frontend expects: data: intermediate_data: {json}\n\n, but the route.ts wraps each chunk with 'data: ...' again.
+        # So, return just the intermediate_data: ... part, not prefixed with 'data: '
+        return f"intermediate_data: {json.dumps({'payload': json.dumps(payload)})}"
+
     thoughts = [
-        "data: Thinking about the data sources...\n\n",
-        "data: Found a relevant article: https://www.census.gov/data.html\n\n",
-        "data: Extracting population numbers from [Wikipedia](https://en.wikipedia.org/wiki/Demographics_of_the_United_States)...\n\n",
-        "data: Compiling the table for you now.\n\n",
-        "data: Done! Table ready. See [US Census QuickFacts](https://www.census.gov/quickfacts/fact/table/US/PST045223)\n\n"
+        {
+            "input": "",
+            "output": "Thought: Thinking about the data sources..."
+        },
+        {
+            "input": "<Document href=\"https://www.census.gov/data.html\"/>\n",
+            "output": "Thought: Found a relevant article."
+        },
+        {
+            "input": "<Document href=\"https://en.wikipedia.org/wiki/Demographics_of_the_United_States\"/>\n",
+            "output": "Thought: Extracting population numbers."
+        },
+        {
+            "input": "",
+            "output": "Thought: Compiling the table for you now."
+        },
+        {
+            "input": "<Document href=\"https://www.census.gov/quickfacts/fact/table/US/PST045223\"/>\n",
+            "output": "Thought: Done! Table ready."
+        }
     ]
-    for thought in thoughts:
-        yield thought
+    for t in thoughts:
+        # Do NOT prefix with 'data: ', let route.ts do it
+        event = f"{make_intermediate_data(t['input'], t['output'])}\n\n"
+        yield event
         await asyncio.sleep(1)
 
 @app.post("/generate/full")
