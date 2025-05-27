@@ -496,7 +496,7 @@ export default function Home() {
 
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-900">
+                    <thead className="bg-gray-800">
                       <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                           Row
@@ -512,7 +512,7 @@ export default function Home() {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="bg-gray-900 divide-y divide-gray-800">
+                    <tbody className="bg-gray-800 divide-y divide-gray-900">
                       {tableState.tableData?.data.map((row, rowIdx) => (
                         <tr key={rowIdx}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">
