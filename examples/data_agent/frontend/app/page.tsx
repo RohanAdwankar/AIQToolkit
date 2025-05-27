@@ -363,13 +363,6 @@ export default function Home() {
     setUserInput("");
   };
 
-  // Scroll to bottom of thoughts when new thoughts arrive
-  useEffect(() => {
-    if (thoughtsEndRef.current) {
-      thoughtsEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [thoughts]);
-
   // Calculate progress metrics
   const progress = tableState.tableData ? (() => {
     try {
