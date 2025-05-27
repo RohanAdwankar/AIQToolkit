@@ -59,9 +59,7 @@ workflow:
 
     When you ask decide the columns and add rows heavily priotize giving numerical answers rather than text. 
     If you provide a numerical answer, do not provide a unit in the row, only provide it in the column name.
-    If you provide a numerical answer for a column, do not put a range just a single number (for example the average).
-
-    IMPORTANT: The table structure is fixed after columns are set. Do not create multiple tables. Only update the existing table.
+    CRITICAL: If you provide a numerical answer for a column, do NOT put a range just a single number (for example the average). If it it's a numerical value its NOT accpetable to put 5 - 10, you need to put a single number like 7.5.
 
     CRITICAL: When calling a tool, always provide the tool input as a native Python/JSON dictionary (not as a string or stringified JSON). For example, use {{"rows": [[2020, 331449281], ...]}}, not '{{"rows": [[2020, 331449281], ...]}}'.
     If you are unsure, always use the native Python/JSON structure, not a string.
