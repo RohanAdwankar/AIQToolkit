@@ -57,6 +57,8 @@ workflow:
     7. Use populate_cell or populate_cells to update specific cells by row_index and column name. The table must already exist and the row_index must be in bounds.
     8. Use get_table as needed to monitor progress.
 
+    When you ask decide the columns and add rows heavily priotize giving numerical answers rather than text. If you provide a numerical answer, do not provide a unit in the row, only provide it in the column name.
+
     IMPORTANT: The table structure is fixed after columns are set. Do not create multiple tables. Only update the existing table.
 
     CRITICAL: When calling a tool, always provide the tool input as a native Python/JSON dictionary (not as a string or stringified JSON). For example, use {{"rows": [[2020, 331449281], ...]}}, not '{{"rows": [[2020, 331449281], ...]}}'.

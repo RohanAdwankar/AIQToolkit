@@ -43,9 +43,9 @@ class AddRowsConfig(FunctionBaseConfig, name="add_rows"):
 
 @register_function(config_type=AddColumnsConfig)
 async def add_columns(config: AddColumnsConfig, builder: Builder):
-    time.sleep(AGENT_DELAY)
     """Add columns to the table. Accepts an array of strings (column names)."""
     async def _add_columns(columns: list, table_id: str = "main_table") -> str:
+        time.sleep(AGENT_DELAY)
         try:
             df = _table_storage.get(table_id, pd.DataFrame())
             if not isinstance(columns, list) or not all(isinstance(c, str) for c in columns):
@@ -78,10 +78,10 @@ async def add_columns(config: AddColumnsConfig, builder: Builder):
 
 @register_function(config_type=AddRowsConfig)
 async def add_rows(config: AddRowsConfig, builder: Builder):
-    time.sleep(AGENT_DELAY)
     """Add rows to the table. Accepts an array of arrays, each subarray must match the number of columns."""
     import json
     async def _add_rows(rows: list, table_id: str = "main_table") -> str:
+        time.sleep(AGENT_DELAY)
         try:
             df = _table_storage.get(table_id, pd.DataFrame())
             if len(df.columns) == 0:
@@ -128,9 +128,9 @@ async def add_rows(config: AddRowsConfig, builder: Builder):
 
 @register_function(config_type=PopulateCellConfig)
 async def populate_cell(config: PopulateCellConfig, builder: Builder):
-    time.sleep(AGENT_DELAY)
     """Populate a specific cell in the table by row_index and column. Table must already exist."""
     async def _populate_cell(row_index: int, column: str, value: str, table_id: str = "main_table") -> str:
+        time.sleep(AGENT_DELAY)
         try:
             df = _table_storage.get(table_id, pd.DataFrame())
             if df.empty or len(df.columns) == 0:
@@ -163,10 +163,10 @@ async def populate_cell(config: PopulateCellConfig, builder: Builder):
 
 @register_function(config_type=GetTableConfig)
 async def get_table(config: GetTableConfig, builder: Builder):
-    time.sleep(AGENT_DELAY)
     """Get the current state of the table."""
     
     async def _get_table(table_id: str = "main_table") -> str:
+        time.sleep(AGENT_DELAY)
         """
         Get the current state of the table.
         
@@ -197,9 +197,9 @@ async def get_table(config: GetTableConfig, builder: Builder):
 
 @register_function(config_type=PopulateCellsConfig)
 async def populate_cells(config: PopulateCellsConfig, builder: Builder):
-    time.sleep(AGENT_DELAY)
     """Populate multiple cells in the table at once by row_index and column. Table must already exist."""
     async def _populate_cells(updates: list, table_id: str = "main_table") -> str:
+        time.sleep(AGENT_DELAY)
         try:
             df = _table_storage.get(table_id, pd.DataFrame())
             if df.empty or len(df.columns) == 0:
