@@ -8,6 +8,7 @@ import {
   PieChart as RePieChart, Pie, Sector,
 } from 'recharts';
 import AIThoughtsPanel from "../components/AIThoughtsPanel";
+import ChartCarousel from "../components/ChartCarousel";
 
 // Define interfaces for our data types
 interface TableData {
@@ -178,35 +179,6 @@ function PieChartRecharts({ columns, data }: { columns: string[]; data: Record<s
             itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
         </RePieChart>
       </ResponsiveContainer>
-    </div>
-  );
-}
-
-// Carousel for charts
-function ChartCarousel({ charts }: { charts: { name: string; element: React.ReactNode }[] }) {
-  const [idx, setIdx] = useState(0);
-  const n = charts.length;
-  if (n === 0) return null;
-  const goLeft = () => setIdx(i => (i - 1 + n) % n);
-  const goRight = () => setIdx(i => (i + 1) % n);
-  return (
-    <div className="w-full flex flex-col items-center my-8">
-      <div className="flex items-center gap-7 mb-2">
-        <button
-          onClick={goLeft}
-          className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-500 shadow"
-          aria-label="Previous chart"
-        >&#8592;</button>
-        <span className="text-gray-300 font-semibold text-lg">{charts[idx].name}</span>
-        <button
-          onClick={goRight}
-          className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-500 shadow"
-          aria-label="Next chart"
-        >&#8594;</button>
-      </div>
-      <div className="w-full flex justify-center">
-        {charts[idx].element}
-      </div>
     </div>
   );
 }
@@ -502,15 +474,6 @@ export default function Home() {
 
           {tableState.tableData && progress && (
             <>
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={handleExportCSV}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded shadow disabled:opacity-50"
-                  disabled={!tableState.tableData}
-                >
-                  Export CSV
-                </button>
-              </div>
               <div className="bg-gray-800 rounded-lg shadow overflow-hidden">
                 <div className="p-4 border-b border-gray-700">
                   <div className="flex justify-between items-center mb-2">
@@ -589,6 +552,7 @@ export default function Home() {
                   { name: "Pie Chart", element: <PieChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
                   { name: "Scatter Plot", element: <ScatterChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
                 ]}
+                onExportCSV={handleExportCSV}
               />
             </>
           )}
