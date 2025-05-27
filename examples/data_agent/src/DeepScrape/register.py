@@ -13,6 +13,10 @@ import asyncio
 import pandas as pd
 from typing import Optional, Dict, Any
 import httpx
+import time
+
+# Adding a delay for rate limiting purposes, this adds foo seconds of delay to each tool call
+AGENT_DELAY = 0
 
 # Start with an empty DataFrame
 _table_storage = {"main_table": pd.DataFrame()}
@@ -39,6 +43,7 @@ class AddRowsConfig(FunctionBaseConfig, name="add_rows"):
 
 @register_function(config_type=AddColumnsConfig)
 async def add_columns(config: AddColumnsConfig, builder: Builder):
+    time.sleep(AGENT_DELAY)
     """Add columns to the table. Accepts an array of strings (column names)."""
     async def _add_columns(columns: list, table_id: str = "main_table") -> str:
         try:
@@ -73,6 +78,7 @@ async def add_columns(config: AddColumnsConfig, builder: Builder):
 
 @register_function(config_type=AddRowsConfig)
 async def add_rows(config: AddRowsConfig, builder: Builder):
+    time.sleep(AGENT_DELAY)
     """Add rows to the table. Accepts an array of arrays, each subarray must match the number of columns."""
     import json
     async def _add_rows(rows: list, table_id: str = "main_table") -> str:
@@ -122,6 +128,7 @@ async def add_rows(config: AddRowsConfig, builder: Builder):
 
 @register_function(config_type=PopulateCellConfig)
 async def populate_cell(config: PopulateCellConfig, builder: Builder):
+    time.sleep(AGENT_DELAY)
     """Populate a specific cell in the table by row_index and column. Table must already exist."""
     async def _populate_cell(row_index: int, column: str, value: str, table_id: str = "main_table") -> str:
         try:
@@ -156,6 +163,7 @@ async def populate_cell(config: PopulateCellConfig, builder: Builder):
 
 @register_function(config_type=GetTableConfig)
 async def get_table(config: GetTableConfig, builder: Builder):
+    time.sleep(AGENT_DELAY)
     """Get the current state of the table."""
     
     async def _get_table(table_id: str = "main_table") -> str:
@@ -189,6 +197,7 @@ async def get_table(config: GetTableConfig, builder: Builder):
 
 @register_function(config_type=PopulateCellsConfig)
 async def populate_cells(config: PopulateCellsConfig, builder: Builder):
+    time.sleep(AGENT_DELAY)
     """Populate multiple cells in the table at once by row_index and column. Table must already exist."""
     async def _populate_cells(updates: list, table_id: str = "main_table") -> str:
         try:
