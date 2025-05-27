@@ -66,7 +66,7 @@ function tableDataToCSV(tableData: TableData): string {
   return [header, ...rows].join('\n');
 }
 
-function BarChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+function BarChartRecharts({ columns, data, axisDomain }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] } }) {
   const { stringColumns, numericColumns } = getColumnTypes(data, columns);
   if (stringColumns.length === 0 || numericColumns.length === 0) return null;
   const xKey = stringColumns[0];
@@ -82,11 +82,14 @@ function BarChartRecharts({ columns, data }: { columns: string[]; data: Record<s
             tick={{ fill: '#fff', fontWeight: 'bold' }}
             axisLine={{ stroke: '#fff' }}
             tickLine={{ stroke: '#fff' }}
+            domain={axisDomain?.x}
+            type={axisDomain?.x ? 'number' : undefined}
           />
           <YAxis
             tick={{ fill: '#fff', fontWeight: 'bold' }}
             axisLine={{ stroke: '#fff' }}
             tickLine={{ stroke: '#fff' }}
+            domain={axisDomain?.y}
           />
           <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
             itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
@@ -98,7 +101,7 @@ function BarChartRecharts({ columns, data }: { columns: string[]; data: Record<s
   );
 }
 
-function LineChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+function LineChartRecharts({ columns, data, axisDomain }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] } }) {
   const { stringColumns, numericColumns } = getColumnTypes(data, columns);
   if (stringColumns.length === 0 || numericColumns.length < 2) return null;
   const xKey = stringColumns[0];
@@ -115,11 +118,14 @@ function LineChartRecharts({ columns, data }: { columns: string[]; data: Record<
             tick={{ fill: '#fff', fontWeight: 'bold' }}
             axisLine={{ stroke: '#fff' }}
             tickLine={{ stroke: '#fff' }}
+            domain={axisDomain?.x}
+            type={axisDomain?.x ? 'number' : undefined}
           />
           <YAxis
             tick={{ fill: '#fff', fontWeight: 'bold' }}
             axisLine={{ stroke: '#fff' }}
             tickLine={{ stroke: '#fff' }}
+            domain={axisDomain?.y}
           />
           <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
             itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
@@ -132,7 +138,7 @@ function LineChartRecharts({ columns, data }: { columns: string[]; data: Record<
   );
 }
 
-function ScatterChartRecharts({ columns, data }: { columns: string[]; data: Record<string, string>[] }) {
+function ScatterChartRecharts({ columns, data, axisDomain }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] } }) {
   const { numericColumns } = getColumnTypes(data, columns);
   if (numericColumns.length < 2) return null;
   const xKey = numericColumns[0];
@@ -148,11 +154,13 @@ function ScatterChartRecharts({ columns, data }: { columns: string[]; data: Reco
             tick={{ fill: '#fff', fontWeight: 'bold' }}
             axisLine={{ stroke: '#fff' }}
             tickLine={{ stroke: '#fff' }}
+            domain={axisDomain?.x}
           />
           <YAxis type="number" dataKey={yKey} name={yKey}
             tick={{ fill: '#fff', fontWeight: 'bold' }}
             axisLine={{ stroke: '#fff' }}
             tickLine={{ stroke: '#fff' }}
+            domain={axisDomain?.y}
           />
           <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
             itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
@@ -547,10 +555,10 @@ export default function Home() {
               </div>
               <ChartCarousel
                 charts={[
-                  { name: "Bar Chart", element: <BarChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                  { name: "Line Chart", element: <LineChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                  { name: "Pie Chart", element: <PieChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
-                  { name: "Scatter Plot", element: <ScatterChartRecharts columns={tableState.tableData.columns} data={tableState.tableData.data} /> },
+                  { name: "Bar Chart", type: "bar", columns: tableState.tableData.columns, data: tableState.tableData.data },
+                  { name: "Line Chart", type: "line", columns: tableState.tableData.columns, data: tableState.tableData.data },
+                  { name: "Pie Chart", type: "pie", columns: tableState.tableData.columns, data: tableState.tableData.data },
+                  { name: "Scatter Plot", type: "scatter", columns: tableState.tableData.columns, data: tableState.tableData.data },
                 ]}
                 onExportCSV={handleExportCSV}
               />
