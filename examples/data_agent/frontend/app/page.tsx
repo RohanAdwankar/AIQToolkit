@@ -7,6 +7,7 @@ import {
   ScatterChart as ReScatterChart, Scatter,
   PieChart as RePieChart, Pie, Sector,
 } from 'recharts';
+import AIThoughtsPanel from "../components/AIThoughtsPanel";
 
 // Define interfaces for our data types
 interface TableData {
@@ -433,23 +434,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-900 flex flex-row items-start p-4">
       {/* Sidebar for AI thoughts */}
-      <aside className="w-1/4 min-w-[280px] max-w-xs bg-gray-800 rounded-lg shadow-lg p-4 mr-6 h-[80vh] overflow-y-auto flex flex-col">
-        <h2 className="text-gray-100 text-xl font-bold mb-4">AI Thoughts</h2>
-        <div className="flex-1 overflow-y-auto">
-          {thoughts.length === 0 && !isStreaming && (
-            <div className="text-gray-400 italic">No thoughts yet.</div>
-          )}
-          {thoughts.map((t, i) => (
-            <div key={i} className="mb-3 p-2 bg-gray-700 rounded text-gray-200 text-sm whitespace-pre-line">
-              {t}
-            </div>
-          ))}
-          <div ref={thoughtsEndRef} />
-        </div>
-        {isStreaming && (
-          <div className="text-blue-400 mt-2 animate-pulse">Streaming thoughts...</div>
-        )}
-      </aside>
+      <AIThoughtsPanel thoughts={thoughts} isStreaming={isStreaming} thoughtsEndRef={thoughtsEndRef} />
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center" style={{ minHeight: '75vh', width: '75vw', maxWidth: 1200 }}>
         <header className="bg-gray-800 rounded-lg shadow p-4 mb-6 w-full">

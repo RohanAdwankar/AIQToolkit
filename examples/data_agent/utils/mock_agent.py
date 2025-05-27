@@ -109,4 +109,4 @@ async def generate_full(request: Request):
     return StreamingResponse(ai_thoughts_stream(), media_type="text/event-stream")
 
 if __name__ == "__main__":
-    uvicorn.run("mock_table:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("mock_agent:app", host="127.0.0.1", port=8000, reload=True)
