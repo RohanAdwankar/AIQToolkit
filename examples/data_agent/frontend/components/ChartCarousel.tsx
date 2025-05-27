@@ -172,7 +172,8 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   const [axisDomains, setAxisDomains] = useState<{ [chartIdx: number]: { x?: [number, number]; y?: [number, number] } }>({});
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [axisDropdownOpen, setAxisDropdownOpen] = useState(false);
-  const [customAxes, setCustomAxes] = useState<{ [chartIdx: number]: { x?: string; y?: string } }>({});
+  // Change customAxes type to { x?: string; y?: string } for global axis persistence
+  const [customAxes, setCustomAxes] = useState<{ x?: string; y?: string }>({});
 
   if (n === 0) return null;
   const goLeft = () => setIdx(i => (i - 1 + n) % n);
@@ -250,22 +251,21 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   const handleSetAxes = (axis: 'x' | 'y', value: string) => {
     setCustomAxes(prev => ({
       ...prev,
-      [idx]: { ...prev[idx], [axis]: value }
+      [axis]: value
     }));
   };
 
   // Handler for resetting to auto axes
   const handleAutoAxes = () => {
-    setCustomAxes(prev => {
-      const newAxes = { ...prev };
-      delete newAxes[idx];
-      return newAxes;
-    });
+    setCustomAxes({}); // Reset all axes to auto
     setAxisDropdownOpen(false);
   };
 
-  // Get axes for current chart
-  const axes = customAxes[idx] || getDefaultAxes(charts[idx]);
+  // Get axes globally (persisted for all chart types)
+  const axes = {
+    x: customAxes.x || getDefaultAxes(charts[idx]).x,
+    y: customAxes.y || getDefaultAxes(charts[idx]).y
+  };
   // Ensure axes.x and axes.y are always defined strings
   const xKey = axes.x || charts[idx].columns[0];
   const yKey = axes.y || charts[idx].columns[1] || charts[idx].columns[0];
@@ -340,9 +340,9 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
           <button
             onClick={handleAutoscale}
             className="px-3 py-2 rounded-l-lg bg-yellow-600 hover:bg-yellow-700 text-white font-semibold shadow border-r border-yellow-700"
-            aria-label="Autoscale chart"
+            aria-label="AutoScale chart"
             style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-          >Autoscale</button>
+          >AutoScale</button>
           <button
             onClick={() => setDropdownOpen(open => !open)}
             className="px-2 py-2 rounded-r-lg bg-yellow-600 hover:bg-yellow-700 text-white font-semibold shadow flex items-center"
