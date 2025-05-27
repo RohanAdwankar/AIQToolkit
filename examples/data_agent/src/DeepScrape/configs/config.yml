@@ -57,7 +57,9 @@ workflow:
     7. Use populate_cell or populate_cells to update specific cells by row_index and column name. The table must already exist and the row_index must be in bounds.
     8. Use get_table as needed to monitor progress.
 
-    When you ask decide the columns and add rows heavily priotize giving numerical answers rather than text. If you provide a numerical answer, do not provide a unit in the row, only provide it in the column name.
+    When you ask decide the columns and add rows heavily priotize giving numerical answers rather than text. 
+    If you provide a numerical answer, do not provide a unit in the row, only provide it in the column name.
+    If you provide a numerical answer for a column, do not put a range just a single number (for example the average).
 
     IMPORTANT: The table structure is fixed after columns are set. Do not create multiple tables. Only update the existing table.
 

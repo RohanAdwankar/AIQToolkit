@@ -36,11 +36,9 @@ function getRechartsData(data: Record<string, string>[], columns: string[]) {
   });
 }
 
-function BarChartRecharts({ columns, data, axisDomain }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] } }) {
+function BarChartRecharts({ columns, data, axisDomain, xKey, yKey }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] }, xKey: string, yKey: string }) {
   const { stringColumns, numericColumns } = getColumnTypes(data, columns);
   if (stringColumns.length === 0 || numericColumns.length === 0) return null;
-  const xKey = stringColumns[0];
-  const yKey = numericColumns[0];
   const chartData = getRechartsData(data, columns);
   return (
     <div className="w-full h-[400px] flex flex-col items-center my-8">
@@ -71,16 +69,13 @@ function BarChartRecharts({ columns, data, axisDomain }: { columns: string[]; da
   );
 }
 
-function LineChartRecharts({ columns, data, axisDomain }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] } }) {
+function LineChartRecharts({ columns, data, axisDomain, xKey, yKey }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] }, xKey: string, yKey: string }) {
   const { stringColumns, numericColumns } = getColumnTypes(data, columns);
   if (stringColumns.length === 0 || numericColumns.length < 2) return null;
-  const xKey = stringColumns[0];
-  const yKey1 = numericColumns[0];
-  const yKey2 = numericColumns[1] || numericColumns[0];
   const chartData = getRechartsData(data, columns);
   return (
     <div className="w-full h-[400px] flex flex-col items-center my-8">
-      <h3 className="text-gray-200 text-lg font-semibold mb-2">Line Chart ({xKey} vs {yKey1}, {yKey2})</h3>
+      <h3 className="text-gray-200 text-lg font-semibold mb-2">Line Chart ({xKey} vs {yKey})</h3>
       <ResponsiveContainer width="100%" height="90%">
         <ReLineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -100,19 +95,16 @@ function LineChartRecharts({ columns, data, axisDomain }: { columns: string[]; d
           <Tooltip contentStyle={{ background: '#222', color: '#fff', border: 'none' }}
             itemStyle={{ color: '#fff' }} labelStyle={{ color: '#fff' }} cursor={{ fill: '#444', opacity: 0.2 }} />
           <Legend wrapperStyle={{ color: '#fff', fontWeight: 'bold' }} />
-          <Line type="monotone" dataKey={yKey1} stroke="#8884d8" activeDot={{ r: 8 }} />
-          {yKey2 !== yKey1 && <Line type="monotone" dataKey={yKey2} stroke="#82ca9d" />}
+          <Line type="monotone" dataKey={yKey} stroke="#8884d8" activeDot={{ r: 8 }} />
         </ReLineChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-function ScatterChartRecharts({ columns, data, axisDomain }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] } }) {
+function ScatterChartRecharts({ columns, data, axisDomain, xKey, yKey }: { columns: string[]; data: Record<string, string>[]; axisDomain?: { x?: [number, number]; y?: [number, number] }, xKey: string, yKey: string }) {
   const { numericColumns } = getColumnTypes(data, columns);
   if (numericColumns.length < 2) return null;
-  const xKey = numericColumns[0];
-  const yKey = numericColumns[1];
   const chartData = getRechartsData(data, columns);
   return (
     <div className="w-full h-[400px] flex flex-col items-center my-8">
@@ -179,10 +171,26 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   const [showAutoscale, setShowAutoscale] = useState(false);
   const [axisDomains, setAxisDomains] = useState<{ [chartIdx: number]: { x?: [number, number]; y?: [number, number] } }>({});
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [axisDropdownOpen, setAxisDropdownOpen] = useState(false);
+  const [customAxes, setCustomAxes] = useState<{ [chartIdx: number]: { x?: string; y?: string } }>({});
 
   if (n === 0) return null;
   const goLeft = () => setIdx(i => (i - 1 + n) % n);
   const goRight = () => setIdx(i => (i + 1) % n);
+
+  // Helper to get default axes based on chart type and columns
+  function getDefaultAxes(chart: ChartConfig) {
+    const { columns, data, type } = chart;
+    const { stringColumns, numericColumns } = getColumnTypes(data, columns);
+    if (type === 'bar') {
+      return { x: stringColumns[0] || columns[0], y: numericColumns[0] || columns[1] };
+    } else if (type === 'line') {
+      return { x: stringColumns[0] || columns[0], y: numericColumns[0] || columns[1] };
+    } else if (type === 'scatter') {
+      return { x: numericColumns[0] || columns[0], y: numericColumns[1] || columns[1] };
+    }
+    return { x: columns[0], y: columns[1] };
+  }
 
   function getNumericRange(chart: ChartConfig): { x?: [number, number]; y?: [number, number] } {
     const { columns, data, type } = chart;
@@ -238,14 +246,39 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
     });
   };
 
+  // Handler for setting custom axes
+  const handleSetAxes = (axis: 'x' | 'y', value: string) => {
+    setCustomAxes(prev => ({
+      ...prev,
+      [idx]: { ...prev[idx], [axis]: value }
+    }));
+  };
+
+  // Handler for resetting to auto axes
+  const handleAutoAxes = () => {
+    setCustomAxes(prev => {
+      const newAxes = { ...prev };
+      delete newAxes[idx];
+      return newAxes;
+    });
+    setAxisDropdownOpen(false);
+  };
+
+  // Get axes for current chart
+  const axes = customAxes[idx] || getDefaultAxes(charts[idx]);
+  // Ensure axes.x and axes.y are always defined strings
+  const xKey = axes.x || charts[idx].columns[0];
+  const yKey = axes.y || charts[idx].columns[1] || charts[idx].columns[0];
+
+  // Chart rendering with axes override
   let chartWithDomain: React.ReactNode = null;
   const chart = charts[idx];
   if (chart.type === 'bar') {
-    chartWithDomain = <BarChartRecharts columns={chart.columns} data={chart.data} axisDomain={axisDomains[idx]} />;
+    chartWithDomain = <BarChartRecharts columns={chart.columns} data={chart.data} axisDomain={axisDomains[idx]} xKey={xKey} yKey={yKey} />;
   } else if (chart.type === 'line') {
-    chartWithDomain = <LineChartRecharts columns={chart.columns} data={chart.data} axisDomain={axisDomains[idx]} />;
+    chartWithDomain = <LineChartRecharts columns={chart.columns} data={chart.data} axisDomain={axisDomains[idx]} xKey={xKey} yKey={yKey} />;
   } else if (chart.type === 'scatter') {
-    chartWithDomain = <ScatterChartRecharts columns={chart.columns} data={chart.data} axisDomain={axisDomains[idx]} />;
+    chartWithDomain = <ScatterChartRecharts columns={chart.columns} data={chart.data} axisDomain={axisDomains[idx]} xKey={xKey} yKey={yKey} />;
   } else if (chart.type === 'pie') {
     chartWithDomain = <PieChartRecharts columns={chart.columns} data={chart.data} />;
   }
@@ -253,6 +286,56 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   return (
     <div className="w-full flex flex-col items-center my-8">
       <div className="flex items-center gap-4 mb-2">
+        {/* Axis selection button group */}
+        <div className="relative flex mr-2">
+          <button
+            onClick={handleAutoAxes}
+            className="px-3 py-2 rounded-l-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow border-r border-blue-700"
+            aria-label="AutoAxis"
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+          >AutoAxis</button>
+          <button
+            onClick={() => setAxisDropdownOpen(open => !open)}
+            className="px-2 py-2 rounded-r-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow flex items-center"
+            aria-label="Axis options"
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+          >
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.293l3.71-4.06a.75.75 0 111.08 1.04l-4.25 4.65a.75.75 0 01-1.08 0l-4.25-4.65a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+          </button>
+          {axisDropdownOpen && (
+            <div className="absolute left-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded shadow-lg z-10 min-w-[180px] p-2">
+              <div className="mb-2 text-gray-300 font-semibold">Set Axes</div>
+              <div className="flex flex-col gap-2">
+                <label className="text-gray-200">X Axis:
+                  <select
+                    className="ml-2 px-2 py-1 rounded bg-gray-700 text-gray-100 border border-gray-600"
+                    value={axes.x}
+                    onChange={e => handleSetAxes('x', e.target.value)}
+                  >
+                    {chart.columns.map(col => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-gray-200">Y Axis:
+                  <select
+                    className="ml-2 px-2 py-1 rounded bg-gray-700 text-gray-100 border border-gray-600"
+                    value={axes.y}
+                    onChange={e => handleSetAxes('y', e.target.value)}
+                  >
+                    {chart.columns.map(col => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <button
+                onClick={() => setAxisDropdownOpen(false)}
+                className="mt-2 w-full px-3 py-1 rounded bg-blue-700 text-white hover:bg-blue-800"
+              >Done</button>
+            </div>
+          )}
+        </div>
         <div className="relative flex">
           <button
             onClick={handleAutoscale}
