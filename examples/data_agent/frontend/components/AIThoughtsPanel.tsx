@@ -60,6 +60,34 @@ function renderThoughtText(text: string) {
   });
 }
 
+// Helper to split agent messages into separate bubbles for Thought, Action, Read, etc.
+function splitAgentMessage(text: string) {
+  // Split on Agent Thought, Agent Action, Agent Read, or lines with just a link
+  const parts: { type: 'thought' | 'action' | 'read' | 'other'; content: string }[] = [];
+  const lines = text.split(/\n+/);
+  for (const line of lines) {
+    const thoughtMatch = line.match(/^Agent Thought:([\s\S]*)/);
+    if (thoughtMatch) {
+      parts.push({ type: 'thought', content: thoughtMatch[1].trim() });
+      continue;
+    }
+    const actionMatch = line.match(/^Agent Action:([\s\S]*)/);
+    if (actionMatch) {
+      parts.push({ type: 'action', content: actionMatch[1].trim() });
+      continue;
+    }
+    const readMatch = line.match(/^Agent Read (https?:\/\/[^\s]+)/);
+    if (readMatch) {
+      parts.push({ type: 'read', content: readMatch[1] });
+      continue;
+    }
+    if (line.trim() !== '') {
+      parts.push({ type: 'other', content: line });
+    }
+  }
+  return parts;
+}
+
 const AIThoughtsPanel: React.FC<AIThoughtsPanelProps> = ({ thoughts, isStreaming, thoughtsEndRef, systemMessages = [] }) => {
   // Store timestamps for each message, only set once per message
   const [timestamps, setTimestamps] = useState<string[]>([]);
@@ -138,12 +166,45 @@ const AIThoughtsPanel: React.FC<AIThoughtsPanelProps> = ({ thoughts, isStreaming
         )}
         {sortedMessages.map((msg, i) =>
           msg.type === 'agent' ? (
-            <div key={`agent-${i}`} className="mb-1 flex flex-col items-start">
-              <div className="bg-gray-700 rounded-2xl px-4 py-2 text-gray-200 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600">
-                {renderThoughtText(msg.text)}
-              </div>
-              <span className="text-xs text-gray-400 mt-1 ml-2">{msg.timestamp}</span>
-            </div>
+            splitAgentMessage(msg.text).map((part, j) => {
+              if (part.type === 'thought') {
+                return (
+                  <div key={`agent-thought-${i}-${j}`} className="mb-1 flex flex-col items-start">
+                    <div className="bg-gray-700 rounded-2xl px-4 py-2 text-purple-300 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600 font-semibold">
+                      Agent Thought: <span className="text-purple-100 font-normal">{part.content}</span>
+                    </div>
+                    <span className="text-xs text-gray-400 mt-1 ml-2">{msg.timestamp}</span>
+                  </div>
+                );
+              } else if (part.type === 'action') {
+                return (
+                  <div key={`agent-action-${i}-${j}`} className="mb-1 flex flex-col items-start">
+                    <div className="bg-gray-700 rounded-2xl px-4 py-2 text-green-300 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600 font-semibold">
+                      Agent Action: <span className="text-green-100 font-normal">{part.content}</span>
+                    </div>
+                    <span className="text-xs text-gray-400 mt-1 ml-2">{msg.timestamp}</span>
+                  </div>
+                );
+              } else if (part.type === 'read') {
+                return (
+                  <div key={`agent-read-${i}-${j}`} className="mb-1 flex flex-col items-start">
+                    <div className="bg-gray-700 rounded-2xl px-4 py-2 text-blue-300 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600 font-semibold">
+                      Agent Read <a href={part.content} target="_blank" rel="noopener noreferrer" className="underline text-blue-200 break-all">{part.content}</a>
+                    </div>
+                    <span className="text-xs text-gray-400 mt-1 ml-2">{msg.timestamp}</span>
+                  </div>
+                );
+              } else {
+                return (
+                  <div key={`agent-other-${i}-${j}`} className="mb-1 flex flex-col items-start">
+                    <div className="bg-gray-700 rounded-2xl px-4 py-2 text-gray-200 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600">
+                      {part.content}
+                    </div>
+                    <span className="text-xs text-gray-400 mt-1 ml-2">{msg.timestamp}</span>
+                  </div>
+                );
+              }
+            })
           ) : (
             <div key={`sys-${i}`} className="mb-1 flex flex-col items-end">
               <div className={`rounded-2xl px-4 py-2 text-sm max-w-full shadow border font-semibold ${msg.type === 'error' ? 'bg-red-900 border-red-700 text-red-200' : 'bg-blue-900 border-blue-700 text-blue-200'}`}
