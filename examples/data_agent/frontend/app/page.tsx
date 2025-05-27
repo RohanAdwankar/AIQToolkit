@@ -437,7 +437,7 @@ export default function Home() {
     if (tableState.error) {
       setSystemMessages(prev => [
         ...prev,
-        { type: 'error', text: tableState.error, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
+        { type: 'error', text: tableState.error ?? '', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
       ]);
     }
   }, [tableState.error]);
@@ -445,7 +445,7 @@ export default function Home() {
     if (tableState.operationMessage) {
       setSystemMessages(prev => [
         ...prev,
-        { type: 'operation', text: tableState.operationMessage, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
+        { type: 'operation', text: tableState.operationMessage ?? '', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
       ]);
     }
   }, [tableState.operationMessage]);
