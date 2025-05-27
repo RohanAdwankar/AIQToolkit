@@ -224,6 +224,7 @@ export default function Home() {
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
   const [thoughts, setThoughts] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [systemMessages, setSystemMessages] = useState<{ type: 'error' | 'operation'; text: string; timestamp: string }[]>([]);
   const thoughtsEndRef = useRef<HTMLDivElement>(null);
 
   // Poll the backend API for table updates every 2 seconds
@@ -431,10 +432,28 @@ export default function Home() {
     }, 0);
   };
 
+  // Add system messages when error or operationMessage changes
+  useEffect(() => {
+    if (tableState.error) {
+      setSystemMessages(prev => [
+        ...prev,
+        { type: 'error', text: tableState.error, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
+      ]);
+    }
+  }, [tableState.error]);
+  useEffect(() => {
+    if (tableState.operationMessage) {
+      setSystemMessages(prev => [
+        ...prev,
+        { type: 'operation', text: tableState.operationMessage, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
+      ]);
+    }
+  }, [tableState.operationMessage]);
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-row items-start p-4">
       {/* Sidebar for AI thoughts */}
-      <AIThoughtsPanel thoughts={thoughts} isStreaming={isStreaming} thoughtsEndRef={thoughtsEndRef} />
+      <AIThoughtsPanel thoughts={thoughts} isStreaming={isStreaming} thoughtsEndRef={thoughtsEndRef} systemMessages={systemMessages} />
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center" style={{ minHeight: '75vh', width: '75vw', maxWidth: 1200 }}>
         <header className="bg-gray-800 rounded-lg shadow p-4 mb-6 w-full">
@@ -470,20 +489,6 @@ export default function Home() {
               {isSubmitting ? "Submitting..." : "Submit"}
             </button>
           </form>
-
-          {tableState.error && (
-            <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4" role="alert">
-              <strong className="font-bold">Error:</strong>
-              <span className="block sm:inline"> {tableState.error}</span>
-            </div>
-          )}
-
-          {tableState.operationMessage && (
-            <div className="bg-blue-900 border border-blue-700 text-blue-200 px-4 py-3 rounded mb-4" role="alert">
-              <strong className="font-bold">Operation:</strong>
-              <span className="block sm:inline"> {tableState.operationMessage}</span>
-            </div>
-          )}
 
           {!tableState.tableData && tableState.status !== "error" && (
             <div className="bg-gray-800 rounded-lg shadow p-8 text-center">

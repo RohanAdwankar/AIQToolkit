@@ -4,6 +4,7 @@ interface AIThoughtsPanelProps {
   thoughts: string[];
   isStreaming: boolean;
   thoughtsEndRef: RefObject<HTMLDivElement | null>;
+  systemMessages?: { type: 'error' | 'operation'; text: string; timestamp: string }[];
 }
 
 // Helper to extract and highlight links, and render message with clickable links
@@ -50,7 +51,7 @@ function renderThoughtText(text: string) {
   });
 }
 
-const AIThoughtsPanel: React.FC<AIThoughtsPanelProps> = ({ thoughts, isStreaming, thoughtsEndRef }) => {
+const AIThoughtsPanel: React.FC<AIThoughtsPanelProps> = ({ thoughts, isStreaming, thoughtsEndRef, systemMessages = [] }) => {
   // Store timestamps for each message, only set once per message
   const [timestamps, setTimestamps] = useState<string[]>([]);
   useEffect(() => {
@@ -71,9 +72,21 @@ const AIThoughtsPanel: React.FC<AIThoughtsPanelProps> = ({ thoughts, isStreaming
     <aside className="w-1/4 min-w-[280px] max-w-xs bg-gray-800 rounded-lg shadow-lg p-4 mr-6 h-[80vh] overflow-y-auto flex flex-col">
       <h2 className="text-gray-100 text-xl font-bold mb-4">AI Thoughts</h2>
       <div className="flex-1 overflow-y-auto flex flex-col gap-2">
-        {thoughts.length === 0 && !isStreaming && (
+        {thoughts.length === 0 && systemMessages.length === 0 && !isStreaming && (
           <div className="text-gray-400 italic">No thoughts yet.</div>
         )}
+        {/* System messages (error/operation) */}
+        {systemMessages.map((msg, i) => (
+          <div key={`sys-${i}`} className="mb-1 flex flex-col items-end">
+            <div className={`rounded-2xl px-4 py-2 text-sm max-w-full shadow border font-semibold ${msg.type === 'error' ? 'bg-red-900 border-red-700 text-red-200' : 'bg-blue-900 border-blue-700 text-blue-200'}`}
+            >
+              {msg.type === 'error' ? 'Error: ' : 'Operation: '}
+              <span className="font-normal">{msg.text}</span>
+            </div>
+            <span className="text-xs text-gray-400 mt-1 mr-2 text-right">{msg.timestamp}</span>
+          </div>
+        ))}
+        {/* Agent thoughts/messages */}
         {thoughts.map((t, i) => (
           <div key={i} className="mb-1 flex flex-col items-start">
             <div className="bg-gray-700 rounded-2xl px-4 py-2 text-gray-200 text-sm whitespace-pre-wrap break-words max-w-full shadow border border-gray-600">
