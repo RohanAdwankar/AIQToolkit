@@ -178,6 +178,7 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   const n = charts.length;
   const [showAutoscale, setShowAutoscale] = useState(false);
   const [axisDomains, setAxisDomains] = useState<{ [chartIdx: number]: { x?: [number, number]; y?: [number, number] } }>({});
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   if (n === 0) return null;
   const goLeft = () => setIdx(i => (i - 1 + n) % n);
@@ -206,9 +207,26 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   }
 
   const handleAutoscale = () => {
+    if (showAutoscale) {
+      // If already autoscaled, reset (remove axisDomains[idx])
+      setAxisDomains(domains => {
+        const newDomains = { ...domains };
+        delete newDomains[idx];
+        return newDomains;
+      });
+      setShowAutoscale(false);
+    } else {
+      const autoscale = getNumericRange(charts[idx]);
+      setAxisDomains(domains => ({ ...domains, [idx]: autoscale }));
+      setShowAutoscale(false);
+    }
+  };
+
+  const handleCustomScale = () => {
     const autoscale = getNumericRange(charts[idx]);
     setAxisDomains(domains => ({ ...domains, [idx]: autoscale }));
     setShowAutoscale(true);
+    setDropdownOpen(false);
   };
 
   const handleAxisChange = (axis: 'x' | 'y', minOrMax: 0 | 1, value: string) => {
@@ -235,11 +253,30 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   return (
     <div className="w-full flex flex-col items-center my-8">
       <div className="flex items-center gap-4 mb-2">
-        <button
-          onClick={handleAutoscale}
-          className="px-3 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white font-semibold shadow"
-          aria-label="Autoscale chart"
-        >Autoscale</button>
+        <div className="relative flex">
+          <button
+            onClick={handleAutoscale}
+            className="px-3 py-2 rounded-l-lg bg-yellow-600 hover:bg-yellow-700 text-white font-semibold shadow border-r border-yellow-700"
+            aria-label="Autoscale chart"
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+          >Autoscale</button>
+          <button
+            onClick={() => setDropdownOpen(open => !open)}
+            className="px-2 py-2 rounded-r-lg bg-yellow-600 hover:bg-yellow-700 text-white font-semibold shadow flex items-center"
+            aria-label="Autoscale options"
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+          >
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.293l3.71-4.06a.75.75 0 111.08 1.04l-4.25 4.65a.75.75 0 01-1.08 0l-4.25-4.65a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+          </button>
+          {dropdownOpen && (
+            <div className="absolute left-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded shadow-lg z-10 min-w-[140px]">
+              <button
+                onClick={handleCustomScale}
+                className="block w-full text-left px-4 py-2 text-gray-200 hover:bg-gray-700"
+              >Custom</button>
+            </div>
+          )}
+        </div>
         <button
           onClick={goLeft}
           className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-500 shadow"
