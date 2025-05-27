@@ -166,8 +166,17 @@ interface ChartCarouselProps {
 }
 
 export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProps) {
+  // Reorder charts so that the first chart is a scatter plot if one exists
+  let sortedCharts = charts;
+  if (charts.length > 1 && charts[0].type !== 'scatter') {
+    const scatterIdx = charts.findIndex(c => c.type === 'scatter');
+    if (scatterIdx !== -1) {
+      sortedCharts = [charts[scatterIdx], ...charts.slice(0, scatterIdx), ...charts.slice(scatterIdx + 1)];
+    }
+  }
+
   const [idx, setIdx] = useState(0);
-  const n = charts.length;
+  const n = sortedCharts.length;
   const [showAutoscale, setShowAutoscale] = useState(false);
   const [axisDomains, setAxisDomains] = useState<{ [chartIdx: number]: { x?: [number, number]; y?: [number, number] } }>({});
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -192,7 +201,6 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
     }
     return { x: columns[0], y: columns[1] };
   }
-
   function getNumericRange(chart: ChartConfig): { x?: [number, number]; y?: [number, number] } {
     const { columns, data, type } = chart;
     const numericCols = columns.filter((col: string) => data.every((row: any) => !isNaN(Number(row[col]))));
@@ -209,9 +217,11 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
     const yMin = Math.min(...yVals), yMax = Math.max(...yVals);
     const xMid = (xMin + xMax) / 2, xRange = (xMax - xMin);
     const yMid = (yMin + yMax) / 2, yRange = (yMax - yMin);
+    // Round to nearest tenth
+    const roundTenth = (v: number) => Math.round(v * 10) / 10;
     return {
-      x: [xMid - xRange, xMid + xRange],
-      y: [yMid - yRange, yMid + yRange],
+      x: [roundTenth(xMid - xRange), roundTenth(xMid + xRange)],
+      y: [roundTenth(yMid - yRange), roundTenth(yMid + yRange)],
     };
   }
 
@@ -225,14 +235,14 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
       });
       setShowAutoscale(false);
     } else {
-      const autoscale = getNumericRange(charts[idx]);
+      const autoscale = getNumericRange(sortedCharts[idx]);
       setAxisDomains(domains => ({ ...domains, [idx]: autoscale }));
       setShowAutoscale(false);
     }
   };
 
   const handleCustomScale = () => {
-    const autoscale = getNumericRange(charts[idx]);
+    const autoscale = getNumericRange(sortedCharts[idx]);
     setAxisDomains(domains => ({ ...domains, [idx]: autoscale }));
     setShowAutoscale(true);
     setDropdownOpen(false);
@@ -263,16 +273,16 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
 
   // Get axes globally (persisted for all chart types)
   const axes = {
-    x: customAxes.x || getDefaultAxes(charts[idx]).x,
-    y: customAxes.y || getDefaultAxes(charts[idx]).y
+    x: customAxes.x || getDefaultAxes(sortedCharts[idx]).x,
+    y: customAxes.y || getDefaultAxes(sortedCharts[idx]).y
   };
   // Ensure axes.x and axes.y are always defined strings
-  const xKey = axes.x || charts[idx].columns[0];
-  const yKey = axes.y || charts[idx].columns[1] || charts[idx].columns[0];
+  const xKey = axes.x || sortedCharts[idx].columns[0];
+  const yKey = axes.y || sortedCharts[idx].columns[1] || sortedCharts[idx].columns[0];
 
   // Chart rendering with axes override
   let chartWithDomain: React.ReactNode = null;
-  const chart = charts[idx];
+  const chart = sortedCharts[idx];
   if (chart.type === 'bar') {
     chartWithDomain = <BarChartRecharts columns={chart.columns} data={chart.data} axisDomain={axisDomains[idx]} xKey={xKey} yKey={yKey} />;
   } else if (chart.type === 'line') {
