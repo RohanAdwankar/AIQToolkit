@@ -11,13 +11,15 @@ interface AIThoughtsPanelProps {
 function renderThoughtText(text: string) {
   // Regex to match URLs (http/https)
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  // Highlight 'Agent Read <url>' and 'Agent Thought: <text>'
+  // Highlight 'Agent Read <url>', 'Agent Thought: <text>', and 'Agent Action: <text>'
   const agentReadRegex = /Agent Read (https?:\/\/[^\s]+)/g;
   const agentThoughtRegex = /Agent Thought:([^\n]*)/g;
+  const agentActionRegex = /Agent Action:([^\n]*)/g;
 
   // Highlight Agent Thought
   text = text.replace(agentThoughtRegex, (match, p1) => `[[AGENT_THOUGHT:${p1.trim()}]]`);
-
+  // Highlight Agent Action
+  text = text.replace(agentActionRegex, (match, p1) => `[[AGENT_ACTION:${p1.trim()}]]`);
   // Replace Agent Read links with a marker
   text = text.replace(agentReadRegex, (match, url) => `[[AGENT_READ:${url}]]`);
 
@@ -28,6 +30,13 @@ function renderThoughtText(text: string) {
       const thought = line.match(/\[\[AGENT_THOUGHT:(.*)\]\]/)?.[1] || '';
       return (
         <span key={idx} className="font-semibold text-purple-300">Agent Thought: <span className="text-purple-100">{thought}</span></span>
+      );
+    }
+    // Agent Action
+    if (line.includes('[[AGENT_ACTION:')) {
+      const action = line.match(/\[\[AGENT_ACTION:(.*)\]\]/)?.[1] || '';
+      return (
+        <span key={idx} className="font-semibold text-green-300">Agent Action: <span className="text-green-100">{action}</span></span>
       );
     }
     // Agent Read
