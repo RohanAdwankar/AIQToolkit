@@ -207,8 +207,8 @@ export default function ChartCarousel({ charts, onExportCSV }: ChartCarouselProp
   }
 
   const handleAutoscale = () => {
-    if (showAutoscale) {
-      // If already autoscaled, reset (remove axisDomains[idx])
+    if (axisDomains[idx]) {
+      // If already autoscaled, reset to default (0-based) scale
       setAxisDomains(domains => {
         const newDomains = { ...domains };
         delete newDomains[idx];
