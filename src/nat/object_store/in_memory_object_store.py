@@ -70,6 +70,15 @@ class InMemoryObjectStore(ObjectStore):
         except KeyError:
             raise NoSuchKeyError(key)
 
+    async def list_objects(self, prefix: str = "") -> list[str]:
+        """
+        List all object keys that match the given prefix.
+        This is an extension method not in the base ObjectStore interface.
+        """
+        async with self._lock:
+            matching_keys = [key for key in self._store.keys() if key.startswith(prefix)]
+            return sorted(matching_keys)
+
 
 @register_object_store(config_type=InMemoryObjectStoreConfig)
 async def in_memory_object_store(config: InMemoryObjectStoreConfig, builder: Builder):

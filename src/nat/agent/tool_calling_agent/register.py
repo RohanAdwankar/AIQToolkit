@@ -47,6 +47,11 @@ class ToolCallAgentWorkflowConfig(FunctionBaseConfig, name="tool_calling_agent")
     system_prompt: str | None = Field(default=None, description="Provides the system prompt to use with the agent.")
     additional_instructions: str | None = Field(default=None,
                                                 description="Additional instructions appended to the system prompt.")
+    max_tool_response_chars: int | None = Field(
+        default=None,
+        description="Maximum characters for tool responses. If exceeded, outputs are truncated and stored. "
+        "Requires large_tool_output_retriever functions for full content access.",
+        gt=0)
 
 
 @register_function(config_type=ToolCallAgentWorkflowConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
@@ -67,6 +72,9 @@ async def tool_calling_agent_workflow(config: ToolCallAgentWorkflowConfig, build
     tools = builder.get_tools(tool_names=config.tool_names, wrapper_type=LLMFrameworkEnum.LANGCHAIN)
     if not tools:
         raise ValueError(f"No tools specified for Tool Calling Agent '{config.llm_name}'")
+
+    from nat.agent.base import setup_large_tool_output_processing
+    large_tool_output_configs = setup_large_tool_output_processing(config, builder)
 
     # construct the Tool Calling Agent Graph from the configured llm, and tools
     graph: CompiledGraph = await ToolCallAgentGraph(llm=llm,
@@ -90,6 +98,11 @@ async def tool_calling_agent_workflow(config: ToolCallAgentWorkflowConfig, build
 
             # get and return the output from the state
             state = ToolCallAgentGraphState(**state)
+
+            # Process large tool outputs if truncation is enabled
+            from nat.agent.base import process_agent_large_tool_outputs
+            state = await process_agent_large_tool_outputs(state, config, large_tool_output_configs, builder)
+
             output_message = state.messages[-1]
             return output_message.content
         except Exception as ex:

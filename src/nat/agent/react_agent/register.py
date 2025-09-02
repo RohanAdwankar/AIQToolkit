@@ -77,6 +77,11 @@ class ReActAgentWorkflowConfig(FunctionBaseConfig, name="react_agent"):
                                               "If False, strings will be used."))
     additional_instructions: str | None = Field(
         default=None, description="Additional instructions to provide to the agent in addition to the base prompt.")
+    max_tool_response_chars: int | None = Field(
+        default=None,
+        description="Maximum characters for tool responses. If exceeded, outputs are truncated and stored. "
+        "Requires large_tool_output_retriever functions for full content access.",
+        gt=0)
 
 
 @register_function(config_type=ReActAgentWorkflowConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
@@ -100,6 +105,9 @@ async def react_agent_workflow(config: ReActAgentWorkflowConfig, builder: Builde
     if not tools:
         raise ValueError(f"No tools specified for ReAct Agent '{config.llm_name}'")
     # configure callbacks, for sending intermediate steps
+    from nat.agent.base import setup_large_tool_output_processing
+    large_tool_output_configs = setup_large_tool_output_processing(config, builder)
+
     # construct the ReAct Agent Graph from the configured llm, prompt, and tools
     graph: CompiledGraph = await ReActAgentGraph(
         llm=llm,
@@ -134,6 +142,11 @@ async def react_agent_workflow(config: ReActAgentWorkflowConfig, builder: Builde
 
             # get and return the output from the state
             state = ReActGraphState(**state)
+
+            # Process large tool outputs if truncation is enabled
+            from nat.agent.base import process_agent_large_tool_outputs
+            state = await process_agent_large_tool_outputs(state, config, large_tool_output_configs, builder)
+
             output_message = state.messages[-1]
             return ChatResponse.from_string(str(output_message.content))
 

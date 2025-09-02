@@ -65,6 +65,11 @@ class ReWOOAgentWorkflowConfig(FunctionBaseConfig, name="rewoo_agent"):
     additional_solver_instructions: str | None = Field(
         default=None,
         description="Additional instructions to provide to the agent in addition to the base solver prompt.")
+    max_tool_response_chars: int | None = Field(
+        default=None,
+        description="Maximum characters for tool responses. If exceeded, outputs are truncated and stored. "
+        "Requires large_tool_output_retriever functions for full content access.",
+        gt=0)
 
 
 @register_function(config_type=ReWOOAgentWorkflowConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
@@ -110,6 +115,9 @@ async def rewoo_agent_workflow(config: ReWOOAgentWorkflowConfig, builder: Builde
     if not tools:
         raise ValueError(f"No tools specified for ReWOO Agent '{config.llm_name}'")
 
+    from nat.agent.base import setup_large_tool_output_processing
+    large_tool_output_configs = setup_large_tool_output_processing(config, builder)
+
     # construct the ReWOO Agent Graph from the configured llm, prompt, and tools
     graph: CompiledGraph = await ReWOOAgentGraph(llm=llm,
                                                  planner_prompt=planner_prompt,
@@ -137,6 +145,11 @@ async def rewoo_agent_workflow(config: ReWOOAgentWorkflowConfig, builder: Builde
 
             # get and return the output from the state
             state = ReWOOGraphState(**state)
+
+            # Process large tool outputs if truncation is enabled
+            from nat.agent.base import process_agent_large_tool_outputs
+            state = await process_agent_large_tool_outputs(state, config, large_tool_output_configs, builder)
+
             output_message = state.result.content
             return ChatResponse.from_string(output_message)
 
